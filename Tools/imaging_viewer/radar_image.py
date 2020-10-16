@@ -1,5 +1,9 @@
 import numpy as np
 from collections import namedtuple
+from util import (
+    vec3d_to_array,
+    quat_to_array,
+)
 
 Extrinsic = namedtuple('Extrinsic', ['position', 'attitude'])
 
@@ -78,11 +82,3 @@ class RadarImage(object):
         vehicle frame
         """
         pass
-
-
-def vec3d_to_array(vec):
-    return np.array([vec.x, vec.y, vec.z])
-
-
-def quat_to_array(quat):
-    return np.array([quat.w, quat.x, quat.y, quat.z])

@@ -87,6 +87,47 @@ message ImageDataCartesian {
 
 
 ///////////////////////////////////////////////////////////////////////////////
+/// The following describes the point cloud stream
+///////////////////////////////////////////////////////////////////////////////
+message TrackerState {
+  required TimeRecord  timestamp = 1;
+  repeated Point       detection = 2;
+  optional uint64      frame_id  = 3;
+}
+
+// A point marks where the target is being detected
+message Point {
+  // Timestamp of the pulse when the point was detected.
+  required TimeRecord timestamp               = 1;
+
+  // ECEF position of the point.
+  required Vec3d      position                = 2;
+
+  // amplitude annd angular uncertainty measured by the array
+  optional float      amplitude               = 3;
+  optional float      azimuth_variance        = 4;
+  optional float      elevation_variance      = 5;
+
+  // raw measurement of the point within the 4D radar cube.
+  // This information is mainly for debugging.
+  optional float      range                   = 6;
+  optional float      range_velocity          = 7;
+  optional float      azimuth                 = 8;
+  optional float      elevation               = 9;
+
+  // Confidence of detection [0, 1] measured by relative peak amplitude to
+  // local noise floor.
+  // Set ONE if not inputed.
+  optional float      confidence              = 10;
+}
+
+// this will go once we change timestamp to double
+message TimeRecord {
+  required double common = 1;
+  optional double sensor = 2;
+};
+
+///////////////////////////////////////////////////////////////////////////////
 /// The following describes the tracklog stream
 ///////////////////////////////////////////////////////////////////////////////
 
