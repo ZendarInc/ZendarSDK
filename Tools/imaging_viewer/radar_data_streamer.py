@@ -2,9 +2,6 @@ from struct import unpack
 
 from abc import ABC, abstractmethod
 
-import data_pb2
-from radar_image import RadarImage
-
 
 class RadarData(ABC):
     """

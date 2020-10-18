@@ -4,38 +4,12 @@ from util import (
     vec3d_to_array,
     quat_to_array,
 )
+from radar_data_streamer import RadarData
 
 Extrinsic = namedtuple('Extrinsic', ['position', 'attitude'])
 
 
-class ImageModel(object):
-
-    def __init__(self, origin, di, dj):
-        self.di = di
-        self.dj = dj
-        self.origin = origin
-
-    def global_to_image(self, ecef_point):
-        radar_to_image = ecef_point - self.origin
-        i_res = np.linalg.norm(self.di)
-        j_res = np.linalg.norm(self.dj)
-        i_dir = self.di/i_res
-        j_dir = self.dj/j_res
-        i_proj = int(round(radar_to_image.dot(i_dir)/i_res))
-        j_proj = int(round(radar_to_image.dot(j_dir)/j_res))
-        pixel_point = (i_proj, j_proj)
-
-        return pixel_point
-
-    def image_to_global(self, pixel_point):
-        i_idx = pixel_point[0]
-        j_idx = pixel_point[1]
-        ecef_point = self.origin + (i_idx*self.di) + (j_idx*self.dj)
-
-        return ecef_point
-
-
-class RadarImage(object):
+class RadarImage(RadarData):
     """
     This class is a Python representation of the protobuf Image object for
     convinent downstream operations
@@ -75,10 +49,31 @@ class RadarImage(object):
 
         return radar_image
 
-    @classmethod
-    def to_vehicle_frame(radar_images):
-        """
-        Take a set of radar images in radar frame and convert all to
-        vehicle frame
-        """
-        pass
+
+class ImageModel(object):
+    """
+    ImageModel describing mapping from world coordinate to image model
+    """
+    def __init__(self, origin, di, dj):
+        self.di = di
+        self.dj = dj
+        self.origin = origin
+
+    def global_to_image(self, ecef_point):
+        radar_to_image = ecef_point - self.origin
+        i_res = np.linalg.norm(self.di)
+        j_res = np.linalg.norm(self.dj)
+        i_dir = self.di/i_res
+        j_dir = self.dj/j_res
+        i_proj = int(round(radar_to_image.dot(i_dir)/i_res))
+        j_proj = int(round(radar_to_image.dot(j_dir)/j_res))
+        pixel_point = (i_proj, j_proj)
+
+        return pixel_point
+
+    def image_to_global(self, pixel_point):
+        i_idx = pixel_point[0]
+        j_idx = pixel_point[1]
+        ecef_point = self.origin + (i_idx*self.di) + (j_idx*self.dj)
+
+        return ecef_point
