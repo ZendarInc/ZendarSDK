@@ -1,10 +1,12 @@
-from os.path import join, exits
+from os.path import join, exists
 from contextlib import ExitStack
 import argparse
 import numpy as np
+from collections import namedtuple
 from matplotlib import pyplot as plt
 from google.protobuf.text_format import Merge
 
+import data_pb2
 from radar_image import RadarImage
 from radar_data_streamer import RadarDataStreamer
 from radar_image_stream_display import RadarImageStreamDisplay
@@ -114,7 +116,7 @@ def convert_single_video_stream(image_pbs_path):
         radar_data_streamer = stack.enter_context(
             RadarDataStreamer(image_pbs_path, data_pb2.Image, RadarImage))
 
-        for radar_image in radar_image_streamer:
+        for radar_image in radar_data_streamer:
             im_rgb = radar_image_display(radar_image.image)
 
             yield radar_image, im_rgb
