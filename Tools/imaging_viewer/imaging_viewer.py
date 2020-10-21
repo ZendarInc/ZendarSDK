@@ -4,10 +4,11 @@ import argparse
 import numpy as np
 from collections import namedtuple
 from matplotlib import pyplot as plt
-from google.protobuf.text_format import Merge
+import cv2
 
 import data_pb2
 from radar_image import RadarImage
+from radar_point_cloud import RadarPointCloud
 from radar_data_streamer import RadarDataStreamer
 from radar_image_stream_display import RadarImageStreamDisplay
 from radar_image_overlay import (
@@ -71,16 +72,16 @@ def main():
         video_writer = None
 
         if exists(io_path.image_pbs_path):
-            image_streamer = convert_single_video_stream(
-                io_path.image_pbs_path)
+            image_streamer = convert_image_stream(io_path.image_pbs_path)
 
         if exists(io_path.pc_pbs_path):
             pc_streamer = convert_point_cloud_stream(io_path.pc_pbs_path)
 
         with ExitStack() as stack:
-            for radar_image, im_rgb in image_streamer:
+            # for radar_image, im_rgb in image_streamer:
+            for im_rgb in pc_streamer:
                 (im_height, im_width, _) = im_rgb.shape
-                im_rgb = overlay_metadata(radar_image, im_rgb)
+                # im_rgb = overlay_metadata(radar_image, im_rgb)
 
                 # setup onscreen display
                 if artist is None:
@@ -106,7 +107,7 @@ def main():
                 plt.pause(1e-4)
 
 
-def convert_single_video_stream(image_pbs_path):
+def convert_image_stream(image_pbs_path):
     """
     convert one radar image pbs file to RGB stream
     """
@@ -120,6 +121,54 @@ def convert_single_video_stream(image_pbs_path):
             im_rgb = radar_image_display(radar_image.image)
 
             yield radar_image, im_rgb
+
+
+def convert_point_cloud_stream(pc_pbs_path):
+    """
+    convert one radar image pbs file to RGB stream
+    """
+
+    # default imaging area
+    xmin = 0
+    xmax = 60
+    ymin = -30
+    ymax = 30
+    im_res = 0.1
+
+    imsize_y = int((ymax - ymin) / im_res)
+    imsize_x = int((xmax - xmin) / im_res)
+
+    with ExitStack() as stack:
+        point_cloud_streamer = stack.enter_context(
+            RadarDataStreamer(pc_pbs_path, data_pb2.TrackerState, RadarPointCloud))
+
+        for pc in point_cloud_streamer:
+            pts = pc.point_cloud
+            if len(pts) == 0:
+                continue
+
+            im_pts = np.array(pts)
+            im_pts[:,0] = (im_pts[:,0] - xmin) / im_res
+            im_pts[:,1] = (im_pts[:,1] - ymin) / im_res
+            pc_image = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
+
+            for (x, y, _) in im_pts:
+                cv2.circle(pc_image,
+                           center=(int(y), int(x)),
+                           radius=1,
+                           color=(255, 0, 0),
+                           thickness=-1)
+
+                """
+                if y < 0 or y > imsize_y:
+                    continue
+
+                if x < 0 or x > imsize_x:
+                    continue
+
+                # pc_image[int(y), int(x), 0] = 255
+                """
+            yield pc_image
 
 
 def overlay_metadata(radar_image, im_rgb, show_range_marker=False):
@@ -139,16 +188,6 @@ def overlay_metadata(radar_image, im_rgb, show_range_marker=False):
     im_rgb = draw_timestamp(im_rgb, frame_id + ":" + timestamp)
 
     return im_rgb
-
-
-def read_proto_text(path, model):
-    """
-    read protobuf in text form
-    """
-    with open(path, 'r') as fp:
-        Merge(fp.read(), model)
-
-    return model
 
 
 if __name__ == "__main__":
