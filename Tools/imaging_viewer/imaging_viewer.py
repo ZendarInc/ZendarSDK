@@ -1,4 +1,5 @@
 from os.path import join, exists
+import sys
 from contextlib import ExitStack
 import argparse
 import numpy as np
@@ -21,6 +22,9 @@ from video_writer import VideoWriter
 IOPath = namedtuple('IOPath', ['image_pbs_path',
                                'pc_pbs_path',
                                'output_path'])
+
+ImagePcPair = namedtuple('ImagePcPair', ['image',
+                                         'pc'])
 
 def main():
     parser = argparse.ArgumentParser()
@@ -71,6 +75,7 @@ def main():
         pc_streamer = None
         video_writer = None
 
+        """
         if exists(io_path.image_pbs_path):
             image_streamer = convert_image_stream(io_path.image_pbs_path)
 
@@ -105,6 +110,57 @@ def main():
                 artist.set_data(im_rgb)
                 fig.canvas.draw()
                 plt.pause(1e-4)
+            """
+
+def sync_streams(image_pbs_path, pc_pbs_stream):
+
+    radar_image_streamer = None
+    point_cloud_streamer = None
+
+    with ExitStack() as stack:
+        if image_pbs_path is not None:
+            radar_image_streamer = stack.enter_context(
+                RadarDataStreamer(image_pbs_path,
+                                  data_pb2.Image,
+                                  RadarImage))
+
+        if pc_pbs_path is not None:
+            point_cloud_streamer = stack.enter_context(
+                RadarDataStreamer(pc_pbs_path,
+                                  data_pb2.TrackerState,
+                                  RadarPointCloud))
+
+        if radar_image_streamer is not None and point_cloud_streamer is not None:
+            radar_image = next(radar_image_streamer)
+            pc = next(point_cloud_streamer)
+
+            while pc.timestamp - radar_image.timestamp < -0.1:
+                yield ImagePcPair(image=None, pc=pc)
+                pc = next(point_cloud_streamer)
+                continue
+
+            while radar_image.timestamp - pc.timestamp < -0.1:
+                yield ImagePcPair(image=radar_image, pc=None)
+                radar_image = next(radar_image_streamer)
+                continue
+
+            while pc.timestamp - radar_image.timestamp < 0.1:
+                yield ImagePcPair(radar=radar_image, pc=pc)
+                pc = next(point_cloud_streamer)
+                continue
+
+        elif radar_image_streamer is not None:
+            for radar_image in radar_image_streamer:
+                yield ImagePcPair(image=radar_image, pc=None)
+
+        elif point_cloud_streamer is not None:
+            for point_cloud in point_cloud_streamer:
+                yield ImagePcPair(image=None, pc=point_cloud)
+
+        else:
+            sys.exit("No point cloud or image stream file")
+
+
 
 
 def convert_image_stream(image_pbs_path):
