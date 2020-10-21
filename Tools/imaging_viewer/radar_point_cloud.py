@@ -5,26 +5,36 @@ from radar_data_streamer import RadarData
 
 
 class RadarPointCloud(RadarData):
-    def __init__(self, timestamp, frame_id, point_cloud):
+    def __init__(self, timestamp, frame_id,
+                 point_cloud_local, point_cloud_ecef):
         self.timestamp = timestamp
         self.frame_id = frame_id
-        self.point_cloud = point_cloud
+        self.point_cloud_local = point_cloud_local
+        self.point_cloud_ecef = point_cloud_ecef
 
     @classmethod
     def from_proto(cls, tracker_state_pb):
         time_record = tracker_state_pb.timestamp
         frame_id = tracker_state_pb.frame_id
 
-        point_cloud = []
+        point_cloud_local = []
+        point_cloud_ecef = []
         for pt in tracker_state_pb.detection:
             xyz = polar2cartesian(pt.range,
                                   pt.azimuth,
                                   pt.elevation)
 
             if xyz is not None:
-                point_cloud.append(xyz)
+                point_cloud_local.append(xyz)
 
-        radar_point_cloud = cls(time_record.common, frame_id, point_cloud)
+            ecef = vec3d_to_array(pt.position)
+            if np.isnan(ecef[0]) or np.isnan(ecef[1]) or np.isnan(ecef[2]):
+                continue
+
+            point_cloud_ecef.append(ecef)
+
+        radar_point_cloud = cls(time_record.common, frame_id,
+                                point_cloud_local, point_cloud_ecef)
 
         return radar_point_cloud
 

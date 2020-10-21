@@ -12,10 +12,7 @@ from radar_image import RadarImage
 from radar_point_cloud import RadarPointCloud
 from radar_data_streamer import RadarDataStreamer
 from radar_image_stream_display import RadarImageStreamDisplay
-from radar_image_overlay import (
-    draw_timestamp,
-    draw_grid_line,
-)
+from radar_image_overlay import draw_timestamp
 from video_writer import VideoWriter
 
 
@@ -63,7 +60,7 @@ def main():
             output_path = join(args.output_dir, radar_name+".mp4")
 
         io_path = IOPath(
-            image_pbs_path = join(args.input_dir, radar_name+".pbs"),
+            image_pbs_path = join(args.input_dir, radar_name+"_images.pbs"),
             pc_pbs_path = join(args.input_dir, radar_name+"_points.pbs"),
             output_path = output_path)
 
@@ -71,49 +68,54 @@ def main():
 
     # create all videos
     for io_path in input_output_paths:
-        image_streamer = None
-        pc_streamer = None
         video_writer = None
 
-        """
-        if exists(io_path.image_pbs_path):
-            image_streamer = convert_image_stream(io_path.image_pbs_path)
+        for image_pc_pair in sync_streams(io_path.image_pbs_path,
+                                          io_path.pc_pbs_path):
 
-        if exists(io_path.pc_pbs_path):
-            pc_streamer = convert_point_cloud_stream(io_path.pc_pbs_path)
+            # create rgb image from point cloud / SAR
+            im_rgb = to_rgb_image(image_pc_pair)
 
-        with ExitStack() as stack:
-            # for radar_image, im_rgb in image_streamer:
-            for im_rgb in pc_streamer:
-                (im_height, im_width, _) = im_rgb.shape
-                # im_rgb = overlay_metadata(radar_image, im_rgb)
+            (im_height, im_width, _) = im_rgb.shape
 
-                # setup onscreen display
-                if artist is None:
-                    artist = fig.gca().imshow(
-                        np.zeros(im_rgb.shape, dtype=np.uint8))
+            # get timestamp and frame id
+            if image_pc_pair.pc is not None:
+                timestamp = image_pc_pair.pc.timestamp
+                frame_id = image_pc_pair.pc.frame_id
+            else:
+                timestamp = image_pc_pair.image.timestamp
+                frame_id = image_pc_pair.image.frame_id
 
-                # setup video writer
-                if args.output_dir is not None and video_writer is None:
-                    video_writer = VideoWriter(io_path.output_path,
-                                               im_width, im_height,
-                                               args.frame_rate,
-                                               args.quality_factor)
+            im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
 
-                    video_writer = stack.enter_context(video_writer)
+            # setup onscreen display
+            if artist is None:
+                artist = fig.gca().imshow(
+                    np.zeros(im_rgb.shape, dtype=np.uint8))
 
-                # write out frame
-                if video_writer is not None:
-                    video_writer(im_rgb)
+            # setup video writer
+            if args.output_dir is not None and video_writer is None:
+                video_writer = VideoWriter(io_path.output_path,
+                                           im_width, im_height,
+                                           args.frame_rate,
+                                           args.quality_factor)
 
-                # on screen display
-                artist.set_data(im_rgb)
-                fig.canvas.draw()
-                plt.pause(1e-4)
-            """
+                video_writer = stack.enter_context(video_writer)
 
-def sync_streams(image_pbs_path, pc_pbs_stream):
+            # write out frame
+            if video_writer is not None:
+                video_writer(im_rgb)
 
+            # on screen display
+            artist.set_data(im_rgb)
+            fig.canvas.draw()
+            plt.pause(1e-4)
+
+
+def sync_streams(image_pbs_path, pc_pbs_path):
+    """
+    this function synchronizes the image and point cloud stream
+    """
     radar_image_streamer = None
     point_cloud_streamer = None
 
@@ -131,23 +133,28 @@ def sync_streams(image_pbs_path, pc_pbs_stream):
                                   RadarPointCloud))
 
         if radar_image_streamer is not None and point_cloud_streamer is not None:
+            radar_image_streamer = iter(radar_image_streamer)
+            point_cloud_streamer = iter(point_cloud_streamer)
+
             radar_image = next(radar_image_streamer)
             pc = next(point_cloud_streamer)
 
-            while pc.timestamp - radar_image.timestamp < -0.1:
+            # sync the two streams at the head
+            while radar_image.timestamp - pc.timestamp > 0.1:
                 yield ImagePcPair(image=None, pc=pc)
                 pc = next(point_cloud_streamer)
                 continue
 
-            while radar_image.timestamp - pc.timestamp < -0.1:
+            while pc.timestamp - radar_image.timestamp > 0.1:
                 yield ImagePcPair(image=radar_image, pc=None)
                 radar_image = next(radar_image_streamer)
                 continue
 
-            while pc.timestamp - radar_image.timestamp < 0.1:
-                yield ImagePcPair(radar=radar_image, pc=pc)
-                pc = next(point_cloud_streamer)
-                continue
+            while True:
+                radar_image = next(radar_image_streamer)
+                while pc.timestamp - radar_image.timestamp <= 0.1:
+                    yield ImagePcPair(image=radar_image, pc=pc)
+                    pc = next(point_cloud_streamer)
 
         elif radar_image_streamer is not None:
             for radar_image in radar_image_streamer:
@@ -161,86 +168,61 @@ def sync_streams(image_pbs_path, pc_pbs_stream):
             sys.exit("No point cloud or image stream file")
 
 
-
-
-def convert_image_stream(image_pbs_path):
+def to_rgb_image(image_pc_pair):
     """
-    convert one radar image pbs file to RGB stream
+    convert raw sar image and / or point cloud into 8-bit RGB for display
     """
+    im_rgb = None
     radar_image_display = RadarImageStreamDisplay()
 
-    with ExitStack() as stack:
-        radar_data_streamer = stack.enter_context(
-            RadarDataStreamer(image_pbs_path, data_pb2.Image, RadarImage))
+    if image_pc_pair.image is not None:
+        im_rgb = radar_image_display(image_pc_pair.image.image)
 
-        for radar_image in radar_data_streamer:
-            im_rgb = radar_image_display(radar_image.image)
+    if image_pc_pair.pc is not None:
+        if im_rgb is not None:
+            for pt in image_pc_pair.pc.point_cloud_ecef:
+                # use the image model to project ecef points to sar
+                y, x = image_pc_pair.image.image_model.global_to_image(pt)
+                cv2.circle(im_rgb,
+                           center=(int(y), int(x)),
+                           radius=1,
+                           color=(255, 69, 0),
+                           thickness=-1)
 
-            yield radar_image, im_rgb
+        else:
+            # create default image region
+            xmin = 0
+            xmax = 60
+            ymin = -30
+            ymax = 30
+            im_res = 0.1
 
+            imsize_y = int((ymax - ymin) / im_res)
+            imsize_x = int((xmax - xmin) / im_res)
 
-def convert_point_cloud_stream(pc_pbs_path):
-    """
-    convert one radar image pbs file to RGB stream
-    """
+            im_rgb = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
 
-    # default imaging area
-    xmin = 0
-    xmax = 60
-    ymin = -30
-    ymax = 30
-    im_res = 0.1
-
-    imsize_y = int((ymax - ymin) / im_res)
-    imsize_x = int((xmax - xmin) / im_res)
-
-    with ExitStack() as stack:
-        point_cloud_streamer = stack.enter_context(
-            RadarDataStreamer(pc_pbs_path, data_pb2.TrackerState, RadarPointCloud))
-
-        for pc in point_cloud_streamer:
-            pts = pc.point_cloud
+            pts = np.copy(image_pc_pair.pc.point_cloud_local)
             if len(pts) == 0:
-                continue
+                return im_rgb
 
             im_pts = np.array(pts)
             im_pts[:,0] = (im_pts[:,0] - xmin) / im_res
             im_pts[:,1] = (im_pts[:,1] - ymin) / im_res
-            pc_image = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
 
             for (x, y, _) in im_pts:
-                cv2.circle(pc_image,
+                cv2.circle(im_rgb,
                            center=(int(y), int(x)),
                            radius=1,
                            color=(255, 0, 0),
                            thickness=-1)
 
-                """
-                if y < 0 or y > imsize_y:
-                    continue
-
-                if x < 0 or x > imsize_x:
-                    continue
-
-                # pc_image[int(y), int(x), 0] = 255
-                """
-            yield pc_image
+    return im_rgb
 
 
-def overlay_metadata(radar_image, im_rgb, show_range_marker=False):
-    # overlay range markers
-    if show_range_marker:
-        radar_position = radar_image.extrinsic.position
-        center = radar_image.image_model.global_to_image(radar_position)
-        pixels_per_meter = 1 / np.linalg.norm(radar_image.image_model.di)
-        im_rgb = draw_grid_line(im_rgb,
-                                center,
-                                pixels_per_meter,
-                                separation=5)
-
-    # overlay timestamp
-    timestamp = "%2.2f" % radar_image.timestamp
-    frame_id = str(radar_image.frame_id)
+def overlay_timestamp(timestamp, frame_id, im_rgb):
+    timestamp = "%2.2f" % timestamp
+    frame_id = "%d" % frame_id
     im_rgb = draw_timestamp(im_rgb, frame_id + ":" + timestamp)
 
     return im_rgb
