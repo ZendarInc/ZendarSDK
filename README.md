@@ -16,7 +16,7 @@ The Zendar radar system produces three concurrent real-time data streams. These 
     - Protobuf message type: `Position`
 
 ## Interface
-The data interface is documented in [protocol](protocol). This interface is written in [Protocol Bufffers](https://developers.google.com/protocol-buffers). Protobuffers can be compiled into C++, Python and other languages to be integrated into your project.
+The data interface is documented in [protocol](protocol/data.proto). This interface is written in [Protocol Bufffers](https://developers.google.com/protocol-buffers). Protobuffers can be compiled into C++, Python and other languages to be integrated into your project.
 
 Zendar binary protobuf streams are stored in the following format
 ```
@@ -26,7 +26,7 @@ Please see [RadarDataStreamer](python/viewer/radar_data_streamer.py) for an exam
 
 
 ## Data Viewer
-Recorded data can be played back by the Python based viewer. Please follow the setup instructions [here](python/README.md) and the run instructions [here](python/viewer/README.md).
+Recorded data can be played back by the Python based viewer. Please follow the [setup instructions](python/README.md) and the [run instructions](python/viewer/README.md).
 
 
 
