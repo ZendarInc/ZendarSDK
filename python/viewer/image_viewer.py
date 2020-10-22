@@ -70,46 +70,48 @@ def main():
     for io_path in input_output_paths:
         video_writer = None
 
-        for image_pc_pair in sync_streams(io_path.image_pbs_path,
-                                          io_path.pc_pbs_path):
+        with ExitStack() as stack:
+            for image_pc_pair in sync_streams(io_path.image_pbs_path,
+                                              io_path.pc_pbs_path):
+                if image_pc_pair.image is None and image_pc_pair.pc is None:
+                    break
 
-            # create rgb image from point cloud / SAR
-            im_rgb = to_rgb_image(image_pc_pair)
+                # create rgb image from point cloud / SAR
+                im_rgb = to_rgb_image(image_pc_pair)
+                (im_height, im_width, _) = im_rgb.shape
 
-            (im_height, im_width, _) = im_rgb.shape
+                # get timestamp and frame id
+                if image_pc_pair.pc is not None:
+                    timestamp = image_pc_pair.pc.timestamp
+                    frame_id = image_pc_pair.pc.frame_id
+                else:
+                    timestamp = image_pc_pair.image.timestamp
+                    frame_id = image_pc_pair.image.frame_id
 
-            # get timestamp and frame id
-            if image_pc_pair.pc is not None:
-                timestamp = image_pc_pair.pc.timestamp
-                frame_id = image_pc_pair.pc.frame_id
-            else:
-                timestamp = image_pc_pair.image.timestamp
-                frame_id = image_pc_pair.image.frame_id
+                im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
 
-            im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
+                # setup onscreen display
+                if artist is None:
+                    artist = fig.gca().imshow(
+                        np.zeros(im_rgb.shape, dtype=np.uint8))
 
-            # setup onscreen display
-            if artist is None:
-                artist = fig.gca().imshow(
-                    np.zeros(im_rgb.shape, dtype=np.uint8))
+                # setup video writer
+                if args.output_dir is not None and video_writer is None:
+                    video_writer = VideoWriter(io_path.output_path,
+                                               im_width, im_height,
+                                               args.frame_rate,
+                                               args.quality_factor)
 
-            # setup video writer
-            if args.output_dir is not None and video_writer is None:
-                video_writer = VideoWriter(io_path.output_path,
-                                           im_width, im_height,
-                                           args.frame_rate,
-                                           args.quality_factor)
+                    video_writer = stack.enter_context(video_writer)
 
-                video_writer = stack.enter_context(video_writer)
+                # write out frame
+                if video_writer is not None:
+                    video_writer(im_rgb)
 
-            # write out frame
-            if video_writer is not None:
-                video_writer(im_rgb)
-
-            # on screen display
-            artist.set_data(im_rgb)
-            fig.canvas.draw()
-            plt.pause(1e-4)
+                # on screen display
+                artist.set_data(im_rgb)
+                fig.canvas.draw()
+                plt.pause(1e-4)
 
 
 def sync_streams(image_pbs_path, pc_pbs_path):
@@ -141,20 +143,27 @@ def sync_streams(image_pbs_path, pc_pbs_path):
 
             # sync the two streams at the head
             while radar_image.timestamp - pc.timestamp > 0.1:
-                yield ImagePcPair(image=None, pc=pc)
                 pc = next(point_cloud_streamer)
                 continue
 
             while pc.timestamp - radar_image.timestamp > 0.1:
-                yield ImagePcPair(image=radar_image, pc=None)
                 radar_image = next(radar_image_streamer)
                 continue
 
+            # display only the overlaid section
             while True:
-                radar_image = next(radar_image_streamer)
+                try:
+                    radar_image = next(radar_image_streamer)
+                except StopIteration:
+                    yield ImagePcPair(image=None, pc=None)
+
                 while pc.timestamp - radar_image.timestamp <= 0.1:
                     yield ImagePcPair(image=radar_image, pc=pc)
-                    pc = next(point_cloud_streamer)
+
+                    try:
+                        pc = next(point_cloud_streamer)
+                    except StopIteration:
+                        yield ImagePcPair(image=None, pc=None)
 
         elif radar_image_streamer is not None:
             for radar_image in radar_image_streamer:
@@ -186,7 +195,7 @@ def to_rgb_image(image_pc_pair):
                 cv2.circle(im_rgb,
                            center=(int(y), int(x)),
                            radius=1,
-                           color=(255, 69, 0),
+                           color=(102, 178, 255),
                            thickness=-1)
 
         else:
@@ -214,7 +223,7 @@ def to_rgb_image(image_pc_pair):
                 cv2.circle(im_rgb,
                            center=(int(y), int(x)),
                            radius=1,
-                           color=(255, 0, 0),
+                           color=(102, 178, 255),
                            thickness=-1)
 
     return im_rgb
