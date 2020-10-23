@@ -11,9 +11,13 @@ This program demonstrates how to:
 
 ## Running the viewer
 
+Please first follow the [setup instructions](../README.md) to setup the Python environment.
+
+To run the viewer, do
+
     $> python3 image_viewer.py
         -i <data dir>
-        -o <output filename.mp4>
+        -o <output dir>
         --radar-name <left_radar_name, e.g. 1739000J1Q>
         --radar-name <right_radar_name, e.g. 1739000J18>
 
