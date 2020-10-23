@@ -20,7 +20,7 @@ The data interface is documented in [protocol](protocol/data.proto). This interf
 
 Zendar binary protobuf streams are stored in the following format
 ```
-<8-bit header> | <4-bit message size> <message> | <4-bit message size> <message> | ....
+<8-byte header> | <4-byte message size> <message> | <4-byte message size> <message> | ....
 ```
 Please see [RadarDataStreamer](python/viewer/radar_data_streamer.py) for an example implementation.
 
