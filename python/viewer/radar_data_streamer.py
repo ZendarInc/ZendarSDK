@@ -1,24 +1,38 @@
 from struct import unpack
 
-import data_pb2
-from radar_image import RadarImage
+from abc import ABC, abstractmethod
 
 
-class RadarImageStreamer(object):
+class RadarData(ABC):
     """
-    stream radar image from a single protobuf file
+    Abstract radar data type stored in pbs stream
     """
-    def __init__(self, radar_stream_path, header_size=8):
+    @classmethod
+    @abstractmethod
+    def from_proto(cls, data_pb):
+        pass
+
+
+class RadarDataStreamer(object):
+    """
+    This class streams data stored in protobuf binary stream and
+    returns python object type
+    """
+    def __init__(self, data_stream_path, proto_type, python_type, header_size=8):
         """
-        radar_stream_path  -- radar image protobuf stream file path
-        header_size        -- size of the header in the binary stream
+        data_stream_path  -- radar data protobuf stream file path
+        proto_type        -- protobuf type
+        python_type       -- Python class to be converted to
+        header_size       -- size of the header in the binary stream
         """
-        self.radar_stream_path = radar_stream_path
-        self.radar_streams = None
+        self.data_stream_path = data_stream_path
+        self.proto_type = proto_type
+        self.python_type = python_type
         self.header_size = header_size
+        self.data_streams = None
 
     def __enter__(self):
-        self.radar_stream = open(self.radar_stream_path, "rb")
+        self.data_stream = open(self.data_stream_path, "rb")
         return self
 
     def __iter__(self):
@@ -28,19 +42,19 @@ class RadarImageStreamer(object):
         move file pointer pass the header
         """
         if self.header_size > 0:
-            _ = self.radar_stream.read(self.header_size)
+            _ = self.data_stream.read(self.header_size)
         return self
 
     def __next__(self):
-        image_pb = read_protobuf_message(self.radar_stream, data_pb2.Image)
-        if image_pb is None:
+        data_pb = read_protobuf_message(self.data_stream, self.proto_type)
+        if data_pb is None:
             raise StopIteration
 
-        radar_image = RadarImage.from_proto(image_pb)
-        return radar_image
+        python_obj = self.python_type.from_proto(data_pb)
+        return python_obj
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.radar_stream.close()
+        self.data_stream.close()
 
 
 class MultipleRadarImageStreamer(object):

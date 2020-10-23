@@ -1,0 +1,218 @@
+// vim: ts=2 sw=2 et ai tw=80
+//
+////////////////////////////////////////////////////////////////////////////////
+///
+////////////////////////////////////////////////////////////////////////////////
+
+syntax = "proto2";
+
+
+///////////////////////////////////////////////////////////////////////////////
+/// The following describes the image stream
+///////////////////////////////////////////////////////////////////////////////
+
+///
+/// This is a single back-projected image.  The `position/attitude` provided
+/// here, describe the position of the vehicle.
+///
+/// The positional information here for the image, will be bound to the image.
+///
+message Image {
+  required double           timestamp   = 1;  // Timestamp in seconds, GPS.
+  required Quaternion       attitude    = 2;
+  required Vec3d            position    = 3;
+  optional uint64           frame_id    = 4;
+  optional ImagePerformance performance = 5;
+
+  oneof image_model {
+    ImageCartesian cartesian = 10;
+  };
+};
+
+message ImageCartesian {
+  required ImageModelCartesian model = 1;
+  required ImageDataCartesian  data  = 2;
+};
+
+/// This describes the transformation from image coordinate to cartesian
+message ImageModelCartesian {
+  optional Vec3d origin = 1;
+  optional Vec3d di     = 2;
+  optional Vec3d dj     = 3;
+};
+
+///
+/// Structure contains all necessary metadata to reconstruct the `data` bytes
+/// into an image.
+///
+/// Data is stored in row-major order.
+///
+///   template <typename Type>
+///   struct __attribute__((packed)) Complex {
+///     Type real;
+///     Type imag;
+///   };
+///
+///   template <typename Type>
+///   using Real = Type;
+///
+message ImageDataCartesian {
+  ///
+  /// The different types of data which can be generated; here is
+  /// documentation for the necessary structure.
+  ///
+  /// COMPLEX_32F -> Complex<float>  -> numpy.complex64
+  /// REAL_32U    -> Real<uint32>    -> numpy.uint32
+  ///
+  enum Type {
+    COMPLEX_32F = 1;
+    REAL_32U    = 5;
+  };
+
+  required Type type = 1;
+
+  /// {
+  /// If you are to cast the `data` element into the appropriate type documented
+  /// above, the resulting matrix should be re-ordered to the following
+  /// dimensions.
+  required uint32 rows = 2;
+  required uint32 cols = 3;
+  /// }
+
+  /// The actual byte data.
+  optional bytes  data = 4;
+};
+
+
+///////////////////////////////////////////////////////////////////////////////
+/// The following describes the point cloud stream
+///////////////////////////////////////////////////////////////////////////////
+message TrackerState {
+  required TimeRecord  timestamp = 1;
+  repeated Point       detection = 2;
+  optional uint64      frame_id  = 3;
+}
+
+// A point marks where the target is being detected
+message Point {
+  // Timestamp of the pulse when the point was detected.
+  required TimeRecord timestamp               = 1;
+
+  // ECEF position of the point.
+  required Vec3d      position                = 2;
+
+  // amplitude annd angular uncertainty measured by the array
+  optional float      amplitude               = 3;
+  optional float      azimuth_variance        = 4;
+  optional float      elevation_variance      = 5;
+
+  // raw measurement of the point within the 4D radar cube.
+  // This information is mainly for debugging.
+  optional float      range                   = 6;
+  optional float      range_velocity          = 7;
+  optional float      azimuth                 = 8;
+  optional float      elevation               = 9;
+
+  // Confidence of detection [0, 1] measured by relative peak amplitude to
+  // local noise floor.
+  // Set ONE if not inputed.
+  optional float      confidence              = 10;
+}
+
+// this will go once we change timestamp to double
+message TimeRecord {
+  required double common = 1;
+  optional double sensor = 2;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// The following describes the tracklog stream
+///////////////////////////////////////////////////////////////////////////////
+
+message Position {
+  required double           timestamp = 1;
+  required Quaternion       attitude  = 2;
+  required Vec3d            position  = 3;
+  optional uint64           update_id = 4;
+  optional PositionQuality  quality   = 5;
+};
+
+message PositionQuality {
+  optional int32 satellite_count = 1;
+  optional GpsFix gps_status     = 2;
+  optional InsMode ins_status    = 3;
+};
+
+enum GpsFix {
+  NO_FIX    = 0;
+  TIME_ONLY = 1;
+  FIX_2D    = 2;
+  FIX_3D    = 3;
+};
+
+enum InsMode {
+  NOT_TRACKING = 0;
+  ALIGNING     = 1;
+  TRACKING     = 2;
+  LOSS_OF_GPS  = 3;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// Primitives
+///////////////////////////////////////////////////////////////////////////////
+
+///
+/// On the `Shannon_Class_Identification` channel, sensors will periodically
+/// publish some metadata recarding which sensors are publishing.
+//
+/// A system should listen to this channel to discover sensors.
+///
+message SensorIdentity {
+  required string serial       = 1;
+  optional uint32 system_major = 2 [default=0];
+  optional uint32 system_minor = 3 [default=0];
+  optional uint32 channel      = 4 [default=0];
+  optional Extrinsic extrinsic = 5;
+};
+
+message DiskSpecification {
+  repeated SensorIdentity sensor = 1;
+};
+
+//
+// Extrinsics are defined as the affine transformation which brings the sensor
+// into the 'common' reference frame.
+//
+// T and P are defined in meters
+// Using quaternion multiplication,
+//    P_common = (R * P_sensor * R_conjugate) + T
+// If R is first converted to a rotation matrix,
+//    P_common = (R_rotation_matrix * P_sensor) + T
+// If the sensor is known to have fixed time latency to the common system time,
+// that can be stored in 'time' in units of seconds.
+message Extrinsic {
+  required Quaternion   R     = 1;
+  required Vec3d        T     = 2;
+  optional double       time  = 3 [default=0.0];
+};
+
+message Vec3d {
+  required double x = 1;
+  required double y = 2;
+  required double z = 3;
+};
+
+message Quaternion {
+  required double w = 1;
+  required double x = 2;
+  required double y = 3;
+  required double z = 4;
+};
+
+///
+/// Relevant performance metrics
+///
+message ImagePerformance {
+  optional double fps = 1;
+};
+

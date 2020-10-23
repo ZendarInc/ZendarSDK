@@ -15,12 +15,16 @@ with the Zendar data
 
 This only needs to be ran once unless the protobufs are updated
 
+    $> pushd ..
     $> sh make_data_proto.sh
+    $> popd
 
 ## Setup Python environment
 
 Every time when a new shell is started, run
 
+    $> pushd ..
     $> source environment.sh
+    $> popd
 
 to setup the Python environment
