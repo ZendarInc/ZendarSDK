@@ -1,12 +1,12 @@
 # Image Viewer
 
-Imaging Viewer is an example Python program that converts recorded raw radar images and point detections, overlay the two data types and displays the images. It optionally lets the user to store the images are an mp4 video.
+Imaging Viewer is an example Python program that converts recorded raw radar images and point detections, overlay the two data types and displays the resulting images. It optionally lets the user store the images as an mp4 video.
 
 This program demonstrates how to:
 
 - load recorded image and point detections from file
 - synchronize the two data streams
-- project point detections on to the radar images
+- project point detections onto the radar images
 - compress the high dynamic range radar image suitable for viewing
 
 ## Running the viewer
