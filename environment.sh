@@ -8,5 +8,5 @@ fullPath=$(readlink -f $filePath)
 
 # append directory to PythonPath
 srcDir=$(dirname $fullPath)
-PYTHONPATH=${PYTHONPATH}:$srcDir:$srcDir/protocol
+PYTHONPATH=$srcDir:$srcDir/protocol:${PYTHONPATH}
 export PYTHONPATH
