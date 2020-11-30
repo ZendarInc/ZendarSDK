@@ -78,6 +78,9 @@ def main():
 
                 # create rgb image from point cloud / SAR
                 im_rgb = to_rgb_image(image_pc_pair)
+                # flip image because image (0,0) is at top left corner
+                # while radar image (0,0) is at bottom left corner
+                im_rgb = np.copy(np.flip(im_rgb, axis=0))
                 (im_height, im_width, _) = im_rgb.shape
 
                 # get timestamp and frame id
