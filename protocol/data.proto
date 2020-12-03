@@ -69,7 +69,7 @@ message ImageDataCartesian {
     REAL_32U    = 5;
   };
 
-  required Type type = 1;
+  optional Type type = 1;
 
   /// {
   /// If you are to cast the `data` element into the appropriate type documented

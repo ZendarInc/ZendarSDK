@@ -5,6 +5,7 @@ from util import (
     quat_to_array,
 )
 from radar_data_streamer import RadarData
+from data_pb2 import Image
 
 Extrinsic = namedtuple('Extrinsic', ['position', 'attitude'])
 
@@ -48,6 +49,37 @@ class RadarImage(RadarData):
         radar_image = cls(timestamp, frame_id, extrinsic, image_model, image)
 
         return radar_image
+
+    def to_proto(self, timestamp, frame_id):
+        image_pb = Image()
+
+        image_pb.timestamp = timestamp
+        image_pb.frame_id = frame_id
+        image_pb.position.x = self.extrinsic.position[0]
+        image_pb.position.y = self.extrinsic.position[1]
+        image_pb.position.z = self.extrinsic.position[2]
+
+        image_pb.attitude.w = self.extrinsic.attitude[0]
+        image_pb.attitude.x = self.extrinsic.attitude[1]
+        image_pb.attitude.y = self.extrinsic.attitude[2]
+        image_pb.attitude.z = self.extrinsic.attitude[3]
+
+        image_pb.cartesian.model.origin.x = self.image_model.origin[0]
+        image_pb.cartesian.model.origin.y = self.image_model.origin[1]
+        image_pb.cartesian.model.origin.z = self.image_model.origin[2]
+
+        image_pb.cartesian.model.di.x = self.image_model.di[0]
+        image_pb.cartesian.model.di.y = self.image_model.di[1]
+        image_pb.cartesian.model.di.z = self.image_model.di[2]
+
+        image_pb.cartesian.model.dj.x = self.image_model.dj[0]
+        image_pb.cartesian.model.dj.y = self.image_model.dj[1]
+        image_pb.cartesian.model.dj.z = self.image_model.dj[2]
+
+        image_pb.cartesian.data.cols = self.image.shape[0]
+        image_pb.cartesian.data.rows = self.image.shape[1]
+
+        return image_pb
 
 
 class ImageModel(object):

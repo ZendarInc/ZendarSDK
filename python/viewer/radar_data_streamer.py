@@ -1,4 +1,4 @@
-from struct import unpack
+from struct import pack, unpack
 
 from abc import ABC, abstractmethod
 
@@ -18,7 +18,8 @@ class RadarDataStreamer(object):
     This class streams data stored in protobuf binary stream and
     returns python object type
     """
-    def __init__(self, data_stream_path, proto_type, python_type, header_size=8):
+    def __init__(self, data_stream_path, proto_type, python_type,
+                 header_size=8, mode='rb'):
         """
         data_stream_path  -- radar data protobuf stream file path
         proto_type        -- protobuf type
@@ -29,10 +30,11 @@ class RadarDataStreamer(object):
         self.proto_type = proto_type
         self.python_type = python_type
         self.header_size = header_size
-        self.data_streams = None
+        self.mode = mode
+        self.data_stream = None
 
     def __enter__(self):
-        self.data_stream = open(self.data_stream_path, "rb")
+        self.data_stream = open(self.data_stream_path, self.mode)
         return self
 
     def __iter__(self):
@@ -55,6 +57,15 @@ class RadarDataStreamer(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.data_stream.close()
+
+    def append(self, record):
+        assert isinstance(record, self.proto_type)
+
+        serial = record.SerializeToString()
+        length = len(serial)
+
+        self.data_stream.write(pack('<I', length))
+        self.data_stream.write(serial)
 
 
 class MultipleRadarImageStreamer(object):

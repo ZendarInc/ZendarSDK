@@ -8,7 +8,10 @@ from matplotlib import pyplot as plt
 import cv2
 
 import data_pb2
-from radar_image import RadarImage
+from radar_image import (
+    RadarImage,
+    ImageModel,
+)
 from radar_point_cloud import RadarPointCloud
 from radar_data_streamer import RadarDataStreamer
 from radar_image_stream_display import RadarImageStreamDisplay
@@ -18,7 +21,8 @@ from video_writer import VideoWriter
 
 IOPath = namedtuple('IOPath', ['image_pbs_path',
                                'pc_pbs_path',
-                               'output_path'])
+                               'video_output_path',
+                               'image_model_output_path'])
 
 ImagePcPair = namedtuple('ImagePcPair', ['image',
                                          'pc'])
@@ -57,12 +61,14 @@ def main():
     for radar_name in args.radar_name:
         output_path = None
         if args.output_dir is not None:
-            output_path = join(args.output_dir, radar_name+".mp4")
+            video_output_path = join(args.output_dir, radar_name+".mp4")
+            image_model_output_path = join(args.output_dir, radar_name+".pbs")
 
         io_path = IOPath(
-            image_pbs_path = join(args.input_dir, radar_name+"_images.pbs"),
-            pc_pbs_path = join(args.input_dir, radar_name+"_points.pbs"),
-            output_path = output_path)
+            image_pbs_path=join(args.input_dir, radar_name+"_images.pbs"),
+            pc_pbs_path=join(args.input_dir, radar_name+"_points.pbs"),
+            video_output_path=video_output_path,
+            image_model_output_path=image_model_output_path)
 
         input_output_paths.append(io_path)
 
@@ -100,16 +106,24 @@ def main():
 
                 # setup video writer
                 if args.output_dir is not None and video_writer is None:
-                    video_writer = VideoWriter(io_path.output_path,
+                    video_writer = VideoWriter(io_path.video_output_path,
                                                im_width, im_height,
                                                args.frame_rate,
                                                args.quality_factor)
+                    writer_proto = stack.enter_context(
+                        RadarDataStreamer(io_path.image_model_output_path,
+                                          data_pb2.Image,
+                                          RadarImage,
+                                          mode='wb'))
 
                     video_writer = stack.enter_context(video_writer)
 
                 # write out frame
                 if video_writer is not None:
                     video_writer(im_rgb)
+                    proto_out = image_pc_pair.image.to_proto(timestamp,
+                                                             frame_id)
+                    writer_proto.append(proto_out)
 
                 # on screen display
                 artist.set_data(im_rgb)
