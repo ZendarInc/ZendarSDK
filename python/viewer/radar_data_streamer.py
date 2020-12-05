@@ -35,6 +35,9 @@ class RadarDataStreamer(object):
 
     def __enter__(self):
         self.data_stream = open(self.data_stream_path, self.mode)
+        if self.mode == 'wb':
+            # write 8 bytes header
+            self.data_stream.write(b"\x41\x48\x41\x56\x00\x00\x00\x00")
         return self
 
     def __iter__(self):

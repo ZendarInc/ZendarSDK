@@ -3,6 +3,8 @@ from collections import namedtuple
 from util import (
     vec3d_to_array,
     quat_to_array,
+    array_to_vec3d_pb,
+    array_to_quat_pb,
 )
 from radar_data_streamer import RadarData
 from data_pb2 import Image
@@ -55,26 +57,20 @@ class RadarImage(RadarData):
 
         image_pb.timestamp = timestamp
         image_pb.frame_id = frame_id
-        image_pb.position.x = self.extrinsic.position[0]
-        image_pb.position.y = self.extrinsic.position[1]
-        image_pb.position.z = self.extrinsic.position[2]
+        array_to_vec3d_pb(image_pb.position,
+                          self.extrinsic.position)
 
-        image_pb.attitude.w = self.extrinsic.attitude[0]
-        image_pb.attitude.x = self.extrinsic.attitude[1]
-        image_pb.attitude.y = self.extrinsic.attitude[2]
-        image_pb.attitude.z = self.extrinsic.attitude[3]
+        array_to_quat_pb(image_pb.attitude,
+                         self.extrinsic.attitude)
 
-        image_pb.cartesian.model.origin.x = self.image_model.origin[0]
-        image_pb.cartesian.model.origin.y = self.image_model.origin[1]
-        image_pb.cartesian.model.origin.z = self.image_model.origin[2]
+        array_to_vec3d_pb(image_pb.cartesian.model.origin,
+                          self.image_model.origin)
 
-        image_pb.cartesian.model.di.x = self.image_model.di[0]
-        image_pb.cartesian.model.di.y = self.image_model.di[1]
-        image_pb.cartesian.model.di.z = self.image_model.di[2]
+        array_to_vec3d_pb(image_pb.cartesian.model.di,
+                          self.image_model.di)
 
-        image_pb.cartesian.model.dj.x = self.image_model.dj[0]
-        image_pb.cartesian.model.dj.y = self.image_model.dj[1]
-        image_pb.cartesian.model.dj.z = self.image_model.dj[2]
+        array_to_vec3d_pb(image_pb.cartesian.model.dj,
+                          self.image_model.dj)
 
         image_pb.cartesian.data.cols = self.image.shape[0]
         image_pb.cartesian.data.rows = self.image.shape[1]
