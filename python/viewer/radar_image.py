@@ -72,8 +72,8 @@ class RadarImage(RadarData):
         array_to_vec3d_pb(image_pb.cartesian.model.dj,
                           self.image_model.dj)
 
-        image_pb.cartesian.data.cols = self.image.shape[0]
-        image_pb.cartesian.data.rows = self.image.shape[1]
+        image_pb.cartesian.data.cols, image_pb.cartesian.data.rows = \
+            self.image.shape
 
         return image_pb
 
