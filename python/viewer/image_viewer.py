@@ -110,7 +110,7 @@ def main():
                                                im_width, im_height,
                                                args.frame_rate,
                                                args.quality_factor)
-                    writer_proto = stack.enter_context(
+                    proto_writer = stack.enter_context(
                         RadarDataStreamer(io_path.image_model_output_path,
                                           data_pb2.Image,
                                           RadarImage,
@@ -123,7 +123,7 @@ def main():
                     video_writer(im_rgb)
                     proto_out = image_pc_pair.image.to_proto(timestamp,
                                                              frame_id)
-                    writer_proto.append(proto_out)
+                    proto_writer.append(proto_out)
 
                 # on screen display
                 artist.set_data(im_rgb)
