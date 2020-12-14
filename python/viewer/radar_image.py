@@ -3,8 +3,11 @@ from collections import namedtuple
 from util import (
     vec3d_to_array,
     quat_to_array,
+    array_to_vec3d_pb,
+    array_to_quat_pb,
 )
 from radar_data_streamer import RadarData
+from data_pb2 import Image
 
 Extrinsic = namedtuple('Extrinsic', ['position', 'attitude'])
 
@@ -48,6 +51,31 @@ class RadarImage(RadarData):
         radar_image = cls(timestamp, frame_id, extrinsic, image_model, image)
 
         return radar_image
+
+    def to_proto(self, timestamp, frame_id):
+        image_pb = Image()
+
+        image_pb.timestamp = timestamp
+        image_pb.frame_id = frame_id
+        array_to_vec3d_pb(image_pb.position,
+                          self.extrinsic.position)
+
+        array_to_quat_pb(image_pb.attitude,
+                         self.extrinsic.attitude)
+
+        array_to_vec3d_pb(image_pb.cartesian.model.origin,
+                          self.image_model.origin)
+
+        array_to_vec3d_pb(image_pb.cartesian.model.di,
+                          self.image_model.di)
+
+        array_to_vec3d_pb(image_pb.cartesian.model.dj,
+                          self.image_model.dj)
+
+        image_pb.cartesian.data.cols, image_pb.cartesian.data.rows = \
+            self.image.shape
+
+        return image_pb
 
 
 class ImageModel(object):
