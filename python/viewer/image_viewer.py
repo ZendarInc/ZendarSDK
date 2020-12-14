@@ -62,7 +62,7 @@ def main():
         output_path = None
         if args.output_dir is not None:
             video_output_path = join(args.output_dir, radar_name+".mp4")
-            image_model_output_path = join(args.output_dir, radar_name+".pbs")
+            image_model_output_path = join(args.output_dir, radar_name+"_image_models.pbs")
 
         io_path = IOPath(
             image_pbs_path=join(args.input_dir, radar_name+"_images.pbs"),
