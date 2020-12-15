@@ -216,7 +216,7 @@ message CameraIndexRecord {
 //  Messages defined in this specification are used to structure the VLP-16 data
 //  single return packet structure. see VLP-16 user manual Figure 9-2
 message IntrinsicLaser {
-    optional uint32 vertical_angle = 1;
+    optional uint32 vertical_angle  = 1;
     optional uint32 vertical_offset = 2;
 };
 
