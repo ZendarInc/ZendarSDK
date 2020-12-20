@@ -124,9 +124,11 @@ def main():
                 # write out frame
                 if video_writer is not None:
                     video_writer(im_rgb)
-                    proto_out = image_pc_pair.image.to_proto(timestamp,
-                                                             frame_id)
-                    proto_writer.append(proto_out)
+
+                    if image_pc_pair.image is not None:
+                        proto_out = image_pc_pair.image.to_proto(timestamp,
+                                                                 frame_id)
+                        proto_writer.append(proto_out)
 
                 # on screen display
                 artist.set_data(im_rgb)
