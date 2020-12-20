@@ -190,9 +190,11 @@ def sync_streams(image_pbs_path, pc_pbs_path):
 
 
 def get_io_paths(radar_name, input_dir, output_dir):
-    output_path = None
+    video_output_path = None
+    image_model_output_path = None
     if output_dir is not None:
-        output_path = join(output_dir, radar_name + ".mp4")
+        video_output_path = join(output_dir, radar_name + ".mp4")
+        image_model_output_path = join(output_dir, radar_name + "_image_models.pbs")
 
     image_pbs_path = join(input_dir, radar_name + "_images.pbs")
     pc_pbs_path = join(input_dir, radar_name + "_points.pbs")
@@ -206,7 +208,8 @@ def get_io_paths(radar_name, input_dir, output_dir):
     io_path = IOPath(
         image_pbs_path = image_pbs_path,
         pc_pbs_path = pc_pbs_path,
-        output_path = output_path)
+        video_output_path = video_output_path,
+        image_model_output_path = image_model_output_path)
 
     return io_path
 
