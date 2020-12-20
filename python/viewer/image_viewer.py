@@ -97,7 +97,8 @@ def main():
 
                     if frame_id - last_frame_id > 1 and frame_id > 0:
                         print("DROP FRAME DETECTED: %d" % frame_id)
-                        last_frame_id = frame_id
+
+                    last_frame_id = frame_id
 
                 im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
 
