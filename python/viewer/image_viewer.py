@@ -51,6 +51,11 @@ def main():
                         type=int,
                         help="video compression quality factor",
                         default=23)
+    parser.add_argument('--no-sar',
+                        action='store_true')
+    parser.add_argument('--no-point-cloud',
+                        action='store_true')
+
     args = parser.parse_args()
 
     fig = plt.figure()
@@ -59,7 +64,9 @@ def main():
 
     input_output_paths = []
     for radar_name in args.radar_name:
-        io_path = get_io_paths(radar_name, args.input_dir, args.output_dir)
+        io_path = get_io_paths(radar_name, args.input_dir, args.output_dir,
+                               use_sar=(not args.no_sar),
+                               use_point_cloud=(not args.no_point_cloud))
         input_output_paths.append(io_path)
 
     # create all videos
@@ -189,7 +196,8 @@ def sync_streams(image_pbs_path, pc_pbs_path):
             sys.exit("No point cloud or image stream file")
 
 
-def get_io_paths(radar_name, input_dir, output_dir):
+def get_io_paths(radar_name, input_dir, output_dir,
+                 use_sar=True, use_point_cloud=True):
     video_output_path = None
     image_model_output_path = None
     if output_dir is not None:
@@ -199,10 +207,10 @@ def get_io_paths(radar_name, input_dir, output_dir):
     image_pbs_path = join(input_dir, radar_name + "_images.pbs")
     pc_pbs_path = join(input_dir, radar_name + "_points.pbs")
 
-    if not exists(image_pbs_path):
+    if not exists(image_pbs_path) or not use_sar:
         image_pbs_path = None
 
-    if not exists(pc_pbs_path):
+    if not exists(pc_pbs_path) or not use_point_cloud:
         pc_pbs_path = None
 
     io_path = IOPath(
