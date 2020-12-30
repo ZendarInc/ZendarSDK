@@ -5,6 +5,8 @@ import argparse
 import numpy as np
 from collections import namedtuple
 from matplotlib import pyplot as plt
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 import cv2
 
 import data_pb2
@@ -237,14 +239,10 @@ def to_rgb_image(image_pc_pair):
 
     if image_pc_pair.pc is not None:
         if im_rgb is not None:
-            for pt in image_pc_pair.pc.point_cloud_ecef:
+            for pt in image_pc_pair.pc.point_cloud:
                 # use the image model to project ecef points to sar
-                y, x = image_pc_pair.image.image_model.global_to_image(pt)
-                cv2.circle(im_rgb,
-                           center=(int(y), int(x)),
-                           radius=1,
-                           color=(102, 178, 255),
-                           thickness=-1)
+                y, x = image_pc_pair.image.image_model.global_to_image(pt.ecef)
+                draw_point(im_rgb, y, x, pt.range_velocity)
 
         else:
             # create default image region
@@ -259,20 +257,10 @@ def to_rgb_image(image_pc_pair):
 
             im_rgb = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
 
-            pts = np.copy(image_pc_pair.pc.point_cloud_local)
-            if len(pts) == 0:
-                return im_rgb
-
-            im_pts = np.array(pts)
-            im_pts[:,0] = (im_pts[:,0] - xmin) / im_res
-            im_pts[:,1] = (im_pts[:,1] - ymin) / im_res
-
-            for (x, y, _) in im_pts:
-                cv2.circle(im_rgb,
-                           center=(int(y), int(x)),
-                           radius=1,
-                           color=(102, 178, 255),
-                           thickness=-1)
+            for pt in image_pc_pair.pc.point_cloud:
+                im_pt_x = (pt.local_xyz[0] - xmin) / im_res
+                im_pt_y = (pt.local_xyz[1] - ymin) / im_res
+                draw_point(im_rgb, y, x, pt.range_velocity)
 
     return im_rgb
 
@@ -285,18 +273,21 @@ def overlay_timestamp(timestamp, frame_id, im_rgb):
     return im_rgb
 
 
-"""
-def overlay_grid_line(im_rgb, image_model):
-    radar_position = radar_image.extrinsic.position
-    center = radar_image.image_model.global_to_image(radar_position)
-    pixels_per_meter = 1 / np.linalg.norm(radar_image.image_model.di)
-    im_rgb = draw_grid_line(im_rgb,
-                            center,
-                            pixels_per_meter,
-                            separation=5)
+cmap = ScalarMappable(norm=Normalize(vmin=-20, vmax=20),
+                      cmap=plt.get_cmap('RdYlGn'))
 
-"""
 
+def draw_point(im, y, x, range_velocity):
+    c = cmap.to_rgba(range_velocity)
+    r = int(255*c[0])
+    g = int(255*c[1])
+    b = int(255*c[2])
+
+    cv2.circle(im,
+               center=(int(y), int(x)),
+               radius=1,
+               color=(r,g,b),
+               thickness=-1)
 
 
 if __name__ == "__main__":
