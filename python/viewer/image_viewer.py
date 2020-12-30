@@ -52,7 +52,7 @@ def main():
     parser.add_argument('--quality-factor',
                         type=int,
                         help="video compression quality factor",
-                        default=28)
+                        default=24)
     parser.add_argument('--no-sar',
                         action='store_true')
     parser.add_argument('--no-point-cloud',
