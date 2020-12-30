@@ -13,13 +13,13 @@ class RadarData(ABC):
         pass
 
 
-class RadarDataStreamer(object):
+class ProtoStreamReader(object):
     """
     This class streams data stored in protobuf binary stream and
     returns python object type
     """
     def __init__(self, data_stream_path, proto_type, python_type,
-                 header_size=8, mode='rb'):
+                 header_size=8):
         """
         data_stream_path  -- radar data protobuf stream file path
         proto_type        -- protobuf type
@@ -30,14 +30,10 @@ class RadarDataStreamer(object):
         self.proto_type = proto_type
         self.python_type = python_type
         self.header_size = header_size
-        self.mode = mode
         self.data_stream = None
 
     def __enter__(self):
-        self.data_stream = open(self.data_stream_path, self.mode)
-        if self.mode == 'wb':
-            # write 8 bytes header
-            self.data_stream.write(b"\x41\x48\x41\x56\x00\x00\x00\x00")
+        self.data_stream = open(self.data_stream_path, 'rb')
         return self
 
     def __iter__(self):
@@ -61,52 +57,75 @@ class RadarDataStreamer(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.data_stream.close()
 
-    def append(self, record):
-        assert isinstance(record, self.proto_type)
 
+class ProtoStreamWriter(object):
+    """
+    This class writes protobuf objects to file stream
+    """
+    def __init__(self, output_file_path, header_size=8):
+        self.output_file_path = output_file_path
+        self.header_size = header_size
+        self.write_stream = None
+
+    def __enter__(self):
+        self.write_stream = open(self.output_file_path, 'wb')
+
+        # add dummy header
+        header = b"\x00" * self.header_size
+        self.write_stream.write(header)
+        return self
+
+    def write(self, record):
         serial = record.SerializeToString()
         length = len(serial)
 
-        self.data_stream.write(pack('<I', length))
-        self.data_stream.write(serial)
+        self.write_stream.write(pack('<I', length))
+        self.write_stream.write(serial)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.write_stream.close()
 
 
-class MultipleRadarImageStreamer(object):
+class MultiRadarStreamReader(object):
     """
-    Takes in multiple radar image streams and return aligned images
-    in time.
+    Takes in multiple radar streams and return aligned radar data
 
     TODO:: this function now only handles two radars
     """
-    def __init__(self, radar_image_streamers):
-        assert isinstance(radar_image_streamers, list), \
-                "radar_image_streamers is not a list"
-        self.radar_image_streamers = radar_image_streamers
-        zip(self.radar_image_streamers[0], self.radar_image_streamers[1])
-        self.image_stream_a = self.radar_image_streamers[0]
-        self.image_stream_b = self.radar_image_streamers[1]
+    def __init__(self, radar_data_readers):
+        assert isinstance(radar_data_readers, list), \
+            "radar_data_readers is not a list"
+
+        assert len(radar_data_readers) == 2, \
+            "MultiRadarStreamReader currently only supports two radars"
+
+        self.radar_data_readers = []
+        for reader in radar_data_readers:
+            self.radar_data_readers.append(iter(reader))
 
     def __iter__(self):
         return self
 
     def __next__(self):
         """
-        return the next timestamp aligned images
+        return the next frame-id aligned radar data
         """
-        radar_image_a = next(self.image_stream_a)
-        radar_image_b = next(self.image_stream_b)
-        a_frame_id = radar_image_a.frame_id
-        b_frame_id = radar_image_b.frame_id
-        while a_frame_id != b_frame_id:
-            if a_frame_id < b_frame_id:
-                radar_image_a = next(self.image_stream_a)
-                a_frame_id = radar_image_a.frame_id
-            elif a_frame_id > b_frame_id:
-                radar_image_b = next(self.image_stream_b)
-                b_frame_id = radar_image_b.frame_id
+        radar_data_0 = next(self.radar_data_readers[0])
+        radar_data_1 = next(self.radar_data_readers[1])
+        frame_id_0 = radar_data_0.frame_id
+        frame_id_1 = radar_data_1.frame_id
 
-        image_list = [radar_image_a, radar_image_b]
-        return image_list
+        # we continue to iterate between all the radar streams
+        # until we find a match
+        while frame_id_0 != frame_id_1:
+            if frame_id_0 < frame_id_1:
+                radar_data_0 = next(self.radar_data_reader_0)
+                frame_id_0 = radar_data_0.frame_id
+            else:
+                radar_data_1 = next(self.radar_data_reader_1)
+                frame_id_1 = radar_data_1.frame_id
+
+        return (radar_data_0, radar_data_1)
 
 
 def read_protobuf_message(fp, message_type):
