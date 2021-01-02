@@ -14,8 +14,11 @@ from radar_image import (
     RadarImage,
     ImageModel,
 )
+from radar_data_streamer import (
+    ProtoStreamReader,
+    ProtoStreamWriter,
+)
 from radar_point_cloud import RadarPointCloud
-from radar_data_streamer import RadarDataStreamer
 from radar_image_stream_display import RadarImageStreamDisplay
 from radar_image_overlay import draw_timestamp
 from video_writer import VideoWriter
@@ -52,7 +55,7 @@ def main():
     parser.add_argument('--quality-factor',
                         type=int,
                         help="video compression quality factor",
-                        default=24)
+                        default=25)
     parser.add_argument('--no-sar',
                         action='store_true')
     parser.add_argument('--no-point-cloud',
@@ -67,8 +70,8 @@ def main():
     input_output_paths = []
     for radar_name in args.radar_name:
         io_path = get_io_paths(radar_name, args.input_dir, args.output_dir,
-                               use_sar=(not args.no_sar),
-                               use_point_cloud=(not args.no_point_cloud))
+                               no_sar=args.no_sar,
+                               no_point_cloud=args.no_point_cloud)
         input_output_paths.append(io_path)
 
     # create all videos
@@ -84,6 +87,7 @@ def main():
 
                 # create rgb image from point cloud / SAR
                 im_rgb = to_rgb_image(image_pc_pair)
+
                 # flip image because image (0,0) is at top left corner
                 # while radar image (0,0) is at bottom left corner
                 im_rgb = np.copy(np.flip(im_rgb, axis=0))
@@ -109,19 +113,16 @@ def main():
                     artist = fig.gca().imshow(
                         np.zeros(im_rgb.shape, dtype=np.uint8))
 
-                # setup video writer
+                # setup video writer and image model writer
                 if args.output_dir is not None and video_writer is None:
                     video_writer = VideoWriter(io_path.video_output_path,
                                                im_width, im_height,
                                                args.frame_rate,
                                                args.quality_factor)
-                    proto_writer = stack.enter_context(
-                        RadarDataStreamer(io_path.image_model_output_path,
-                                          data_pb2.Image,
-                                          RadarImage,
-                                          mode='wb'))
-
                     video_writer = stack.enter_context(video_writer)
+
+                    proto_writer = stack.enter_context(
+                        ProtoStreamWriter(io_path.image_model_output_path))
 
                 # write out frame
                 if video_writer is not None:
@@ -130,7 +131,7 @@ def main():
                     if image_pc_pair.image is not None:
                         proto_out = image_pc_pair.image.to_proto(timestamp,
                                                                  frame_id)
-                        proto_writer.append(proto_out)
+                        proto_writer.write(proto_out)
 
                 # on screen display
                 artist.set_data(im_rgb)
@@ -148,13 +149,13 @@ def sync_streams(image_pbs_path, pc_pbs_path):
     with ExitStack() as stack:
         if image_pbs_path is not None:
             radar_image_streamer = stack.enter_context(
-                RadarDataStreamer(image_pbs_path,
+                ProtoStreamReader(image_pbs_path,
                                   data_pb2.Image,
                                   RadarImage))
 
         if pc_pbs_path is not None:
             point_cloud_streamer = stack.enter_context(
-                RadarDataStreamer(pc_pbs_path,
+                ProtoStreamReader(pc_pbs_path,
                                   data_pb2.TrackerState,
                                   RadarPointCloud))
 
@@ -199,32 +200,6 @@ def sync_streams(image_pbs_path, pc_pbs_path):
 
         else:
             sys.exit("No point cloud or image stream file")
-
-
-def get_io_paths(radar_name, input_dir, output_dir,
-                 use_sar=True, use_point_cloud=True):
-    video_output_path = None
-    image_model_output_path = None
-    if output_dir is not None:
-        video_output_path = join(output_dir, radar_name + ".mp4")
-        image_model_output_path = join(output_dir, radar_name + "_image_models.pbs")
-
-    image_pbs_path = join(input_dir, radar_name + "_images.pbs")
-    pc_pbs_path = join(input_dir, radar_name + "_points.pbs")
-
-    if not exists(image_pbs_path) or not use_sar:
-        image_pbs_path = None
-
-    if not exists(pc_pbs_path) or not use_point_cloud:
-        pc_pbs_path = None
-
-    io_path = IOPath(
-        image_pbs_path = image_pbs_path,
-        pc_pbs_path = pc_pbs_path,
-        video_output_path = video_output_path,
-        image_model_output_path = image_model_output_path)
-
-    return io_path
 
 
 def to_rgb_image(image_pc_pair):
@@ -288,6 +263,40 @@ def draw_point(im, y, x, range_velocity):
                radius=1,
                color=(r,g,b),
                thickness=-1)
+
+
+def get_io_paths(radar_name, input_dir, output_dir,
+                 no_sar=False, no_point_cloud=False):
+    image_pbs_path = None
+    pc_pbs_path = None
+    video_output_path = None
+    image_model_output_path = None
+
+    if no_sar:
+        print("radar image display is turned off")
+    else:
+        image_pbs_path = join(input_dir, radar_name + "_images.pbs")
+        assert exists(image_pbs_path), \
+            "radar image at [%s] is not found" % image_pbs_path
+
+    if no_point_cloud:
+        print("radar point cloud display is turned off")
+    else:
+        pc_pbs_path = join(input_dir, radar_name + "_points.pbs")
+        assert exists(pc_pbs_path), \
+            "radar point cloud at [%s] is not found" % pc_pbs_path
+
+    if output_dir is not None:
+        video_output_path = join(output_dir, radar_name + ".mp4")
+        image_model_output_path = join(output_dir, radar_name + "_image_models.pbs")
+
+    io_path = IOPath(
+        image_pbs_path = image_pbs_path,
+        pc_pbs_path = pc_pbs_path,
+        video_output_path = video_output_path,
+        image_model_output_path = image_model_output_path)
+
+    return io_path
 
 
 if __name__ == "__main__":
