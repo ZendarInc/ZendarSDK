@@ -94,10 +94,10 @@ class MultiRadarStreamReader(object):
     """
     def __init__(self, radar_data_readers):
         assert isinstance(radar_data_readers, list), \
-                "radar_data_readers is not a list"
+            "radar_data_readers is not a list"
 
         assert len(radar_data_readers) == 2, \
-                "MultiRadarStreamReader currently only supports two radars"
+            "MultiRadarStreamReader currently only supports two radars"
 
         self.radar_data_readers = []
         for reader in radar_data_readers:

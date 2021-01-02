@@ -12,7 +12,6 @@ import cv2
 import data_pb2
 from radar_image import (
     RadarImage,
-    ImageModel,
 )
 from radar_data_streamer import (
     ProtoStreamReader,
@@ -31,6 +30,7 @@ IOPath = namedtuple('IOPath', ['image_pbs_path',
 
 ImagePcPair = namedtuple('ImagePcPair', ['image',
                                          'pc'])
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -235,7 +235,7 @@ def to_rgb_image(image_pc_pair):
             for pt in image_pc_pair.pc.point_cloud:
                 im_pt_x = (pt.local_xyz[0] - xmin) / im_res
                 im_pt_y = (pt.local_xyz[1] - ymin) / im_res
-                draw_point(im_rgb, y, x, pt.range_velocity)
+                draw_point(im_rgb, im_pt_y, im_pt_x, pt.range_velocity)
 
     return im_rgb
 
@@ -261,7 +261,7 @@ def draw_point(im, y, x, range_velocity):
     cv2.circle(im,
                center=(int(y), int(x)),
                radius=1,
-               color=(r,g,b),
+               color=(r, g, b),
                thickness=-1)
 
 
@@ -291,10 +291,10 @@ def get_io_paths(radar_name, input_dir, output_dir,
         image_model_output_path = join(output_dir, radar_name + "_image_models.pbs")
 
     io_path = IOPath(
-        image_pbs_path = image_pbs_path,
-        pc_pbs_path = pc_pbs_path,
-        video_output_path = video_output_path,
-        image_model_output_path = image_model_output_path)
+        image_pbs_path=image_pbs_path,
+        pc_pbs_path=pc_pbs_path,
+        video_output_path=video_output_path,
+        image_model_output_path=image_model_output_path)
 
     return io_path
 
