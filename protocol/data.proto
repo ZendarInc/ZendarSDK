@@ -129,16 +129,28 @@ message TimeRecord {
 ///////////////////////////////////////////////////////////////////////////////
 /// The following describes the range-Doppler stream
 ///////////////////////////////////////////////////////////////////////////////
+
+// LinearSamplingParams contains parameters of a uniform sampling
+// of some line segment in an affine space.
 message LinearSamplingParams {
+    // start value of a line
     required double start = 1;
+    // space between two samples
     required double delta = 2;
+    // number of samples
     required int32  count = 3;
 };
 
 message RangeDopplerImageModel {
+  // number of receivers
   required uint32                num_rx              = 1;
+
+  // parameters required to construct range and Doppler axes
   required LinearSamplingParams  range_axis_params   = 2;
   required LinearSamplingParams  doppler_axis_params = 3;
+
+  // position of each receiver and wavelength will be used
+  // in direction of arrival estimation.
   repeated Vec3d                 rx_positions        = 4;
   required double                wavelength          = 5;
 };
