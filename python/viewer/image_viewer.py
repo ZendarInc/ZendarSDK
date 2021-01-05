@@ -51,6 +51,11 @@ def main():
                         type=int,
                         help="video compression quality factor",
                         default=23)
+    parser.add_argument('--no-sar',
+                        action='store_true')
+    parser.add_argument('--no-point-cloud',
+                        action='store_true')
+
     args = parser.parse_args()
 
     fig = plt.figure()
@@ -59,23 +64,16 @@ def main():
 
     input_output_paths = []
     for radar_name in args.radar_name:
-        output_path = None
-        if args.output_dir is not None:
-            video_output_path = join(args.output_dir, radar_name+".mp4")
-            image_model_output_path = join(args.output_dir, radar_name+"_image_models.pbs")
-
-        io_path = IOPath(
-            image_pbs_path=join(args.input_dir, radar_name+"_images.pbs"),
-            pc_pbs_path=join(args.input_dir, radar_name+"_points.pbs"),
-            video_output_path=video_output_path,
-            image_model_output_path=image_model_output_path)
-
+        io_path = get_io_paths(radar_name, args.input_dir, args.output_dir,
+                               use_sar=(not args.no_sar),
+                               use_point_cloud=(not args.no_point_cloud))
         input_output_paths.append(io_path)
 
     # create all videos
     for io_path in input_output_paths:
         video_writer = None
 
+        last_frame_id = 0
         with ExitStack() as stack:
             for image_pc_pair in sync_streams(io_path.image_pbs_path,
                                               io_path.pc_pbs_path):
@@ -96,6 +94,11 @@ def main():
                 else:
                     timestamp = image_pc_pair.image.timestamp
                     frame_id = image_pc_pair.image.frame_id
+
+                    if frame_id - last_frame_id > 1 and frame_id > 0:
+                        print("DROP FRAME DETECTED: %d" % frame_id)
+
+                    last_frame_id = frame_id
 
                 im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
 
@@ -121,9 +124,11 @@ def main():
                 # write out frame
                 if video_writer is not None:
                     video_writer(im_rgb)
-                    proto_out = image_pc_pair.image.to_proto(timestamp,
-                                                             frame_id)
-                    proto_writer.append(proto_out)
+
+                    if image_pc_pair.image is not None:
+                        proto_out = image_pc_pair.image.to_proto(timestamp,
+                                                                 frame_id)
+                        proto_writer.append(proto_out)
 
                 # on screen display
                 artist.set_data(im_rgb)
@@ -194,6 +199,32 @@ def sync_streams(image_pbs_path, pc_pbs_path):
             sys.exit("No point cloud or image stream file")
 
 
+def get_io_paths(radar_name, input_dir, output_dir,
+                 use_sar=True, use_point_cloud=True):
+    video_output_path = None
+    image_model_output_path = None
+    if output_dir is not None:
+        video_output_path = join(output_dir, radar_name + ".mp4")
+        image_model_output_path = join(output_dir, radar_name + "_image_models.pbs")
+
+    image_pbs_path = join(input_dir, radar_name + "_images.pbs")
+    pc_pbs_path = join(input_dir, radar_name + "_points.pbs")
+
+    if not exists(image_pbs_path) or not use_sar:
+        image_pbs_path = None
+
+    if not exists(pc_pbs_path) or not use_point_cloud:
+        pc_pbs_path = None
+
+    io_path = IOPath(
+        image_pbs_path = image_pbs_path,
+        pc_pbs_path = pc_pbs_path,
+        video_output_path = video_output_path,
+        image_model_output_path = image_model_output_path)
+
+    return io_path
+
+
 def to_rgb_image(image_pc_pair):
     """
     convert raw sar image and / or point cloud into 8-bit RGB for display
@@ -252,6 +283,20 @@ def overlay_timestamp(timestamp, frame_id, im_rgb):
     im_rgb = draw_timestamp(im_rgb, frame_id + ":" + timestamp)
 
     return im_rgb
+
+
+"""
+def overlay_grid_line(im_rgb, image_model):
+    radar_position = radar_image.extrinsic.position
+    center = radar_image.image_model.global_to_image(radar_position)
+    pixels_per_meter = 1 / np.linalg.norm(radar_image.image_model.di)
+    im_rgb = draw_grid_line(im_rgb,
+                            center,
+                            pixels_per_meter,
+                            separation=5)
+
+"""
+
 
 
 if __name__ == "__main__":

@@ -7,7 +7,8 @@ with the Zendar data
 
     $> apt-get install -y       \
         ffmpeg                  \
-        python3-pip
+        python3-pip             \
+        protobuf-compiler
 
     $> pip3 install -r requirements.txt
 
