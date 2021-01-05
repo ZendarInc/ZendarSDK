@@ -125,6 +125,48 @@ message TimeRecord {
   optional double sensor = 2;
 };
 
+
+///////////////////////////////////////////////////////////////////////////////
+/// The following describes the range-Doppler stream
+///////////////////////////////////////////////////////////////////////////////
+
+// LinearSamplingParams contains parameters of a uniform sampling
+// of some line segment in an affine space.
+message LinearSamplingParams {
+    // start value of a line
+    required double start = 1;
+    // space between two samples
+    required double delta = 2;
+    // number of samples
+    required int32  count = 3;
+};
+
+message RangeDopplerImageModel {
+  // number of receivers
+  required uint32                num_rx              = 1;
+
+  // parameters required to construct range and Doppler axes
+  required LinearSamplingParams  range_axis_params   = 2;
+  required LinearSamplingParams  doppler_axis_params = 3;
+
+  // position of each receiver and wavelength will be used
+  // in direction of arrival estimation.
+  repeated Vec3d                 rx_positions        = 4;
+  required double                wavelength          = 5;
+};
+
+message RangeDopplerFrame {
+  // To reconstruct range-Doppler frame from the `data` bytes,
+  // the resulting matrix should be re-ordered to the following shape and type:
+  // data has shape (range_axis_params.count, doppler_axis_params.count, num_rx).
+  // data type is COMPLEX_32F -> Complex<float> -> numpy.complex64.
+  // real part first and then imaginary.
+  // little-endian and row major.
+  required double timestamp = 1;
+  required bytes  data      = 2;
+};
+
+
 ///////////////////////////////////////////////////////////////////////////////
 /// The following describes the tracklog stream
 ///////////////////////////////////////////////////////////////////////////////
@@ -156,6 +198,82 @@ enum InsMode {
   TRACKING     = 2;
   LOSS_OF_GPS  = 3;
 };
+
+
+///////////////////////////////////////////////////////////////////////////////
+/// The following describes the camera configuration and index record
+///////////////////////////////////////////////////////////////////////////////
+
+message IntrinsicCamera {
+  required double frame_rate = 1; // frames per second
+
+  enum PixelFormat {
+    BAYER_RG8 = 0;
+  };
+  optional PixelFormat pixel_format = 2 [default=BAYER_RG8];
+};
+
+// each camera video frame is synchronized with its CameraIndexRecord message
+message CameraIndexRecord {
+  required TimeRecord timestamp   = 1;
+  required uint64     frame_index = 2;
+};
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+/// The following describes the lidar stream
+///////////////////////////////////////////////////////////////////////////////
+
+//  Messages defined in this specification are used to structure the VLP-16 data
+//  single return packet structure. see VLP-16 user manual Figure 9-2
+message IntrinsicLaser {
+    optional uint32 vertical_angle  = 1;
+    optional uint32 vertical_offset = 2;
+};
+
+message IntrinsicLidar {
+    optional uint32 rotational_position = 1;
+
+    enum ReturnMode {
+        STRONGEST = 1;
+        LAST      = 2;
+        DUAL      = 3;
+    };
+    optional ReturnMode return_mode = 2 [default=STRONGEST];
+
+    enum SensorType {
+        HDL_32E  = 1;
+        VLP_16   = 2;
+        VLP_32C  = 3;
+        VELARRAY = 4;
+        VLS_128  = 5;
+        HDL_64E  = 6;
+    };
+    optional SensorType sensor_type          = 3 [default=VLP_16];
+
+    optional uint32 motor_rpm                = 4 [default=600];
+    repeated IntrinsicLaser laser_intrinsics = 5;
+};
+
+message LidarReturn {
+    required uint32 distance  = 1; // 2 bytes
+    required uint32 intensity = 2; // 1 byte
+};
+
+message LidarFiringBlock {
+    required uint32      block_identifier    = 2; // new block
+    required uint32      rotational_position = 3; // azimuth
+    repeated LidarReturn laser_returns       = 4; // 32 returns in a block
+};
+
+message LidarDataFrame {
+    optional TimeRecord       timestamp      = 1;
+    repeated LidarFiringBlock firings        = 2; // should be 12 per packet
+    required uint32           mode           = 3; // return mode (single/dual)
+    required uint32           sensor_type    = 4; // should be VLP-16 (0x34)
+};
+
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Primitives
