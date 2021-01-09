@@ -17,6 +17,7 @@ from radar_data_streamer import (
     ProtoStreamReader,
     ProtoStreamWriter,
 )
+from lidar_point_cloud import LidarPointCloud
 from radar_point_cloud import RadarPointCloud
 from radar_image_stream_display import RadarImageStreamDisplay
 from radar_image_overlay import draw_timestamp
@@ -28,8 +29,9 @@ IOPath = namedtuple('IOPath', ['image_pbs_path',
                                'video_output_path',
                                'image_model_output_path'])
 
-ImagePcPair = namedtuple('ImagePcPair', ['image',
-                                         'pc'])
+RenderData = namedtuple('RenderData', ['image',
+                                       'pc',
+                                       'lidar'])
 
 
 def main():
@@ -80,13 +82,14 @@ def main():
 
         last_frame_id = 0
         with ExitStack() as stack:
-            for image_pc_pair in sync_streams(io_path.image_pbs_path,
-                                              io_path.pc_pbs_path):
-                if image_pc_pair.image is None and image_pc_pair.pc is None:
+            for render_data in sync_streams(io_path.image_pbs_path,
+                                              io_path.pc_pbs_path,
+                                              io_path.lidar_pbs_path):
+                if render_data.image is None and render_data.pc is None and render_data.lidar is None:
                     break
 
                 # create rgb image from point cloud / SAR
-                im_rgb = to_rgb_image(image_pc_pair)
+                im_rgb = to_rgb_image(render_data)
 
                 # flip image because image (0,0) is at top left corner
                 # while radar image (0,0) is at bottom left corner
@@ -94,12 +97,12 @@ def main():
                 (im_height, im_width, _) = im_rgb.shape
 
                 # get timestamp and frame id
-                if image_pc_pair.pc is not None:
-                    timestamp = image_pc_pair.pc.timestamp
-                    frame_id = image_pc_pair.pc.frame_id
+                if render_data.pc is not None:
+                    timestamp = render_data.pc.timestamp
+                    frame_id = render_data.pc.frame_id
                 else:
-                    timestamp = image_pc_pair.image.timestamp
-                    frame_id = image_pc_pair.image.frame_id
+                    timestamp = render_data.image.timestamp
+                    frame_id = render_data.image.frame_id
 
                     if frame_id - last_frame_id > 1 and frame_id > 0:
                         print("DROP FRAME DETECTED: %d" % frame_id)
@@ -128,8 +131,8 @@ def main():
                 if video_writer is not None:
                     video_writer(im_rgb)
 
-                    if image_pc_pair.image is not None:
-                        proto_out = image_pc_pair.image.to_proto(timestamp,
+                    if render_data.image is not None:
+                        proto_out = render_data.image.to_proto(timestamp,
                                                                  frame_id)
                         proto_writer.write(proto_out)
 
@@ -139,12 +142,13 @@ def main():
                 plt.pause(1e-4)
 
 
-def sync_streams(image_pbs_path, pc_pbs_path):
+def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
     """
     this function synchronizes the image and point cloud stream
     """
     radar_image_streamer = None
     point_cloud_streamer = None
+    lidar_cloud_streamer = None
 
     with ExitStack() as stack:
         if image_pbs_path is not None:
@@ -159,65 +163,84 @@ def sync_streams(image_pbs_path, pc_pbs_path):
                                   data_pb2.TrackerState,
                                   RadarPointCloud))
 
-        if radar_image_streamer is not None and point_cloud_streamer is not None:
-            radar_image_streamer = iter(radar_image_streamer)
-            point_cloud_streamer = iter(point_cloud_streamer)
+        if lidar_pbs_path is not None:
+            lidar_cloud_streamer = stack.enter_context(
+                ProtoStreamReader(lidar_pbs_path,
+                                  data_pb2.LidarPoints,
+                                  LidarPointsCloud)
+        streams = {}
+        data = {}
+        if radar_image_streamer is not None:
+            streams['radar'] = iter(radar_image_streamer)
+        if point_cloud_streamer is not None:
+            streams['pc'] = iter(point_cloud_streamer)
+        if lidar_cloud_streamer is not None:
+            streams['lidar'] = iter(lidar_cloud_streamer)
 
-            radar_image = next(radar_image_streamer)
-            pc = next(point_cloud_streamer)
+        for key in streams:
+            data[key] = next(streams[key])
+        # Synchronize the streams one at the start
+        while True:
+            # Check if data streams are synced
+            max_timestamp = 0
+            for values in data.values():
+                if values.timestamp > max_timestamp:
+                    max_timestamp = values.timestamp
+            synchronized = True
+            for values in data.values:
+                if max_timestamp - values.timestamp > 0.1:
+                    synchronized = False
+            if synchronized:
+                break
+            # Iterate each stream until its timestamp is either close to or
+            # later than the latest timestamp
+            for keys in streams:
+                while max_timestamp - data[key].timestamp > 0.1:
+                    data[key] = next(stream[key])
 
-            # sync the two streams at the head
-            while radar_image.timestamp - pc.timestamp > 0.1:
-                pc = next(point_cloud_streamer)
-                continue
-
-            while pc.timestamp - radar_image.timestamp > 0.1:
-                radar_image = next(radar_image_streamer)
-                continue
-
-            # display only the overlaid section
-            while True:
+        # display only the overlaid section
+        while True:
+            for key in streams:
                 try:
-                    radar_image = next(radar_image_streamer)
+                    data[key] = next(streams[key])
                 except StopIteration:
-                    yield ImagePcPair(image=None, pc=None)
+                    yield RenderData(image=None, pc=None, lidar=None)
+                if data[key].timestamp > max_timestamp:
+                    max_timestamp = data[key].max_timestamp
 
-                while pc.timestamp - radar_image.timestamp <= 0.1:
-                    yield ImagePcPair(image=radar_image, pc=pc)
+            image = data['radar'] if 'radar' in streams else None
+            pc    = data['pc']    if 'pc'    in streams else None
+            lidar = data['lidar'] if 'lidar' in streams else None
+            yield RenderData(image=image, pc=pc, lidar=lidar)
 
+            # Catch up to the most ahead timestamp with the other streams
+            for key in streams:
+                while max_timestamp - data[key].timestamp > 0.1:
                     try:
-                        pc = next(point_cloud_streamer)
+                        data[key] = next(streams[key])
                     except StopIteration:
-                        yield ImagePcPair(image=None, pc=None)
+                        yield RenderData(image=None, pc=None, lidar=None)
+                    image = data['radar'] if 'radar' in streams else None
+                    pc    = data['pc']    if 'pc'    in streams else None
+                    lidar = data['lidar'] if 'lidar' in streams else None
+                    yield RenderData(image=image, pc=pc, lidar=lidar)
 
-        elif radar_image_streamer is not None:
-            for radar_image in radar_image_streamer:
-                yield ImagePcPair(image=radar_image, pc=None)
-
-        elif point_cloud_streamer is not None:
-            for point_cloud in point_cloud_streamer:
-                yield ImagePcPair(image=None, pc=point_cloud)
-
-        else:
-            sys.exit("No point cloud or image stream file")
-
-
-def to_rgb_image(image_pc_pair):
+def to_rgb_image(render_data):
     """
     convert raw sar image and / or point cloud into 8-bit RGB for display
     """
     im_rgb = None
     radar_image_display = RadarImageStreamDisplay()
 
-    if image_pc_pair.image is not None:
-        im_rgb = radar_image_display(image_pc_pair.image.image)
+    if render_data.image is not None:
+        im_rgb = radar_image_display(render_data.image.image)
 
-    if image_pc_pair.pc is not None:
+    if render_data.pc is not None:
         if im_rgb is not None:
-            for pt in image_pc_pair.pc.point_cloud:
+            for pt in render_data.pc.point_cloud:
                 # use the image model to project ecef points to sar
-                y, x = image_pc_pair.image.image_model.global_to_image(pt.ecef)
-                draw_point(im_rgb, y, x, pt.range_velocity)
+                y, x = render_data.image.image_model.global_to_image(pt.ecef)
+                draw_tracker_point(im_rgb, y, x, pt.range_velocity)
 
         else:
             # create default image region
@@ -232,10 +255,17 @@ def to_rgb_image(image_pc_pair):
 
             im_rgb = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
 
-            for pt in image_pc_pair.pc.point_cloud:
+            for pt in render_data.pc.point_cloud:
                 im_pt_x = (pt.local_xyz[0] - xmin) / im_res
                 im_pt_y = (pt.local_xyz[1] - ymin) / im_res
-                draw_point(im_rgb, im_pt_y, im_pt_x, pt.range_velocity)
+                draw_tracker_point(im_rgb, im_pt_y, im_pt_x, pt.range_velocity)
+    if render_data.lidar is not None:
+        if im_rgb is not None:
+            for pt in render_data.lidar.point_cloud:
+                # use the image model to project ecef points to sar
+                y, x = render_data.image.image_model.global_to_image(pt.position)
+                draw_lidar_point(im_rgb, y, x, pt.intensity)
+
 
     return im_rgb
 
@@ -252,7 +282,7 @@ cmap = ScalarMappable(norm=Normalize(vmin=-20, vmax=20),
                       cmap=plt.get_cmap('RdYlGn'))
 
 
-def draw_point(im, y, x, range_velocity):
+def draw_tracker_point(im, y, x, range_velocity):
     c = cmap.to_rgba(range_velocity)
     r = int(255*c[0])
     g = int(255*c[1])
@@ -264,6 +294,17 @@ def draw_point(im, y, x, range_velocity):
                color=(r, g, b),
                thickness=-1)
 
+def draw_lidar_point(im, y, x, intensity):
+    c = cmap.to_rgba(intensity)
+    r = int(255*c[0])
+    g = int(255*c[1])
+    b = int(255*c[2])
+
+    cv2.circle(im,
+               center=(int(y), int(x)),
+               radius=1,
+               color=(r, g, b),
+               thickness=-1)
 
 def get_io_paths(radar_name, input_dir, output_dir,
                  no_sar=False, no_point_cloud=False):
