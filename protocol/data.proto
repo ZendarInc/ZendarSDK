@@ -274,6 +274,17 @@ message LidarDataFrame {
     required uint32           sensor_type    = 4; // should be VLP-16 (0x34)
 };
 
+message LidarPointsFrame {
+    required double           timestamp         = 1;
+    repeated LidarPoint       point_cloud       = 2;
+};
+
+message LidarPoint {
+    required double     timestamp         = 1;
+    required Vec3d      position          = 2;
+    required uint32     intensity         = 3;
+};
+
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Primitives

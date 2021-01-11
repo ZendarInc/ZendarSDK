@@ -17,7 +17,7 @@ from radar_data_streamer import (
     ProtoStreamReader,
     ProtoStreamWriter,
 )
-from lidar_point_cloud import LidarPointCloud
+from lidar_points_frame import LidarPointsFrame
 from radar_point_cloud import RadarPointCloud
 from radar_image_stream_display import RadarImageStreamDisplay
 from radar_image_overlay import draw_timestamp
@@ -181,8 +181,8 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
         if lidar_pbs_path is not None:
             lidar_cloud_streamer = stack.enter_context(
                 ProtoStreamReader(lidar_pbs_path,
-                                  data_pb2.LidarPoints,
-                                  LidarPointsCloud))
+                                  data_pb2.LidarPointsFrame,
+                                  LidarPointsFrame))
         streams = {}
         data = {}
         if radar_image_streamer is not None:
@@ -202,7 +202,7 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
                 if values.timestamp > max_timestamp:
                     max_timestamp = values.timestamp
             synchronized = True
-            for values in data.values:
+            for values in data.values():
                 if max_timestamp - values.timestamp > 0.1:
                     synchronized = False
             if synchronized:
@@ -221,7 +221,7 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
                 except StopIteration:
                     yield RenderData(image=None, pc=None, lidar=None)
                 if data[key].timestamp > max_timestamp:
-                    max_timestamp = data[key].max_timestamp
+                    max_timestamp = data[key].timestamp
 
             image = data['radar'] if 'radar' in streams else None
             pc    = data['pc']    if 'pc'    in streams else None
