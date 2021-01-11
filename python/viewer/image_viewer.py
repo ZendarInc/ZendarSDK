@@ -26,6 +26,7 @@ from video_writer import VideoWriter
 
 IOPath = namedtuple('IOPath', ['image_pbs_path',
                                'pc_pbs_path',
+                               'lidar_pbs_path',
                                'video_output_path',
                                'image_model_output_path'])
 
@@ -48,8 +49,7 @@ def main():
                         default=None)
     parser.add_argument('--radar-name',
                         action='append',
-                        help="output video with specified radar serial number",
-                        required=True)
+                        help="output video with specified radar serial number")
     parser.add_argument('--frame-rate',
                         type=int,
                         help="output video frame rate",
@@ -62,6 +62,8 @@ def main():
                         action='store_true')
     parser.add_argument('--no-point-cloud',
                         action='store_true')
+    parser.add_argument('--no-lidar',
+                        action='store_true')
 
     args = parser.parse_args()
 
@@ -70,11 +72,22 @@ def main():
     artist = None
 
     input_output_paths = []
-    for radar_name in args.radar_name:
-        io_path = get_io_paths(radar_name, args.input_dir, args.output_dir,
+    if (not args.no_sar) or (not args.no_point_cloud):
+        assert(args.radar_name is not None), \
+                "Radar name is required except for lidar-only"
+    if args.radar_name is None:
+        io_path = get_io_paths('', args.input_dir, args.output_dir,
                                no_sar=args.no_sar,
-                               no_point_cloud=args.no_point_cloud)
+                               no_point_cloud=args.no_point_cloud,
+                               no_lidar=args.no_lidar)
         input_output_paths.append(io_path)
+    else:
+        for radar_name in args.radar_name:
+            io_path = get_io_paths(radar_name, args.input_dir, args.output_dir,
+                                   no_sar=args.no_sar,
+                                   no_point_cloud=args.no_point_cloud,
+                                   no_lidar=args.no_lidar)
+            input_output_paths.append(io_path)
 
     # create all videos
     for io_path in input_output_paths:
@@ -85,7 +98,9 @@ def main():
             for render_data in sync_streams(io_path.image_pbs_path,
                                               io_path.pc_pbs_path,
                                               io_path.lidar_pbs_path):
-                if render_data.image is None and render_data.pc is None and render_data.lidar is None:
+                if render_data.image is None \
+                   and render_data.pc is None \
+                   and render_data.lidar is None:
                     break
 
                 # create rgb image from point cloud / SAR
@@ -167,7 +182,7 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
             lidar_cloud_streamer = stack.enter_context(
                 ProtoStreamReader(lidar_pbs_path,
                                   data_pb2.LidarPoints,
-                                  LidarPointsCloud)
+                                  LidarPointsCloud))
         streams = {}
         data = {}
         if radar_image_streamer is not None:
@@ -264,7 +279,24 @@ def to_rgb_image(render_data):
             for pt in render_data.lidar.point_cloud:
                 # use the image model to project ecef points to sar
                 y, x = render_data.image.image_model.global_to_image(pt.position)
-                draw_lidar_point(im_rgb, y, x, pt.intensity)
+                draw_lidar_point(im_rgb, y, x)
+        else:
+            # create default image region
+            xmin = 0
+            xmax = 60
+            ymin = -30
+            ymax = 30
+            im_res = 0.1
+
+            imsize_y = int((ymax - ymin) / im_res)
+            imsize_x = int((xmax - xmin) / im_res)
+
+            im_rgb = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
+
+            for pt in render_data.lidar.point_cloud:
+                im_pt_x = (pt.local_xyz[0] - xmin) / im_res
+                im_pt_y = (pt.local_xyz[1] - ymin) / im_res
+                draw_lidar_point(im_rgb, im_pt_y, im_pt_x)
 
 
     return im_rgb
@@ -294,20 +326,15 @@ def draw_tracker_point(im, y, x, range_velocity):
                color=(r, g, b),
                thickness=-1)
 
-def draw_lidar_point(im, y, x, intensity):
-    c = cmap.to_rgba(intensity)
-    r = int(255*c[0])
-    g = int(255*c[1])
-    b = int(255*c[2])
-
+def draw_lidar_point(im, y, x):
     cv2.circle(im,
                center=(int(y), int(x)),
                radius=1,
-               color=(r, g, b),
+               color=(135, 206, 250),
                thickness=-1)
 
 def get_io_paths(radar_name, input_dir, output_dir,
-                 no_sar=False, no_point_cloud=False):
+                 no_sar=False, no_point_cloud=False, no_lidar=False):
     image_pbs_path = None
     pc_pbs_path = None
     video_output_path = None
@@ -327,6 +354,13 @@ def get_io_paths(radar_name, input_dir, output_dir,
         assert exists(pc_pbs_path), \
             "radar point cloud at [%s] is not found" % pc_pbs_path
 
+    if no_lidar:
+        print("lidar display is turned off")
+    else:
+        lidar_pbs_path = join(input_dir, "lidar.pbs")
+        assert exists(lidar_pbs_path), \
+            "lidar point cloud at [%s] is not found" % pc_pbs_path
+
     if output_dir is not None:
         video_output_path = join(output_dir, radar_name + ".mp4")
         image_model_output_path = join(output_dir, radar_name + "_image_models.pbs")
@@ -334,6 +368,7 @@ def get_io_paths(radar_name, input_dir, output_dir,
     io_path = IOPath(
         image_pbs_path=image_pbs_path,
         pc_pbs_path=pc_pbs_path,
+        lidar_pbs_path=lidar_pbs_path,
         video_output_path=video_output_path,
         image_model_output_path=image_model_output_path)
 
