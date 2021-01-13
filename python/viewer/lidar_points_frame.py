@@ -5,15 +5,19 @@ from radar_data_streamer import RadarData
 
 
 class LidarPoint(object):
-    def __init__(self, position, intensity):
-        self.position = position
+    def __init__(self, position_local, position_global, intensity):
+        self.position_local = position_local
+        self.position_global = position_global
         self.intensity = intensity
 
     @classmethod
     def from_proto(cls, lidar_pb):
-        point = cls(np.array((lidar_pb.position.x,
-                             lidar_pb.position.y,
-                             lidar_pb.position.z)),
+        point = cls(np.array((lidar_pb.position_local.x,
+                              lidar_pb.position_local.y,
+                              lidar_pb.position_local.z)),
+                    np.array((lidar_pb.position_global.x,
+                              lidar_pb.position_global.y,
+                              lidar_pb.position_global.z)),
                     lidar_pb.intensity)
         return point
 

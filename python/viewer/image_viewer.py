@@ -115,7 +115,7 @@ def main():
                 if render_data.pc is not None:
                     timestamp = render_data.pc.timestamp
                     frame_id = render_data.pc.frame_id
-                else:
+                elif render_data.image is not None:
                     timestamp = render_data.image.timestamp
                     frame_id = render_data.image.frame_id
 
@@ -123,7 +123,10 @@ def main():
                         print("DROP FRAME DETECTED: %d" % frame_id)
 
                     last_frame_id = frame_id
-
+                else:
+                    # Lidar-only doesn't use the frame_id
+                    timestamp = render_data.lidar.timestamp
+                    frame_id = 0
                 im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
 
                 # setup onscreen display
@@ -209,9 +212,9 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
                 break
             # Iterate each stream until its timestamp is either close to or
             # later than the latest timestamp
-            for keys in streams:
+            for key in streams:
                 while max_timestamp - data[key].timestamp > 0.1:
-                    data[key] = next(stream[key])
+                    data[key] = next(streams[key])
 
         # display only the overlaid section
         while True:
@@ -278,7 +281,8 @@ def to_rgb_image(render_data):
         if im_rgb is not None:
             for pt in render_data.lidar.point_cloud:
                 # use the image model to project ecef points to sar
-                y, x = render_data.image.image_model.global_to_image(pt.position)
+                y, x = render_data.image.image_model.global_to_image(
+                    pt.position_global)
                 draw_lidar_point(im_rgb, y, x)
         else:
             # create default image region
@@ -294,8 +298,8 @@ def to_rgb_image(render_data):
             im_rgb = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
 
             for pt in render_data.lidar.point_cloud:
-                im_pt_x = (pt.local_xyz[0] - xmin) / im_res
-                im_pt_y = (pt.local_xyz[1] - ymin) / im_res
+                im_pt_x = (pt.position_local[0] - xmin) / im_res
+                im_pt_y = (pt.position_local[1] - ymin) / im_res
                 draw_lidar_point(im_rgb, im_pt_y, im_pt_x)
 
 

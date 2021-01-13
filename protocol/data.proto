@@ -281,8 +281,9 @@ message LidarPointsFrame {
 
 message LidarPoint {
     required double     timestamp         = 1;
-    required Vec3d      position          = 2;
-    required uint32     intensity         = 3;
+    required Vec3d      position_global   = 2;
+    required Vec3d      position_local    = 3;
+    required uint32     intensity         = 4;
 };
 
 
@@ -344,4 +345,3 @@ message Quaternion {
 message ImagePerformance {
   optional double fps = 1;
 };
-
