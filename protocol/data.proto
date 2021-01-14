@@ -113,9 +113,9 @@ message Point {
   optional float      azimuth                 = 8;
   optional float      elevation               = 9;
 
-  // Confidence of detection [0, 1] measured by relative peak amplitude to
-  // local noise floor.
-  // Set ONE if not inputed.
+  // Confidence of detection is the magnitude of the detection  pixel in the
+  // range-Doppler map divided by average of magnitudes of surrounding region
+  // which is determined by the range segment and doppler segment parameters.
   optional float      confidence              = 10;
 }
 

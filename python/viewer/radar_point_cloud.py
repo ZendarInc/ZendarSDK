@@ -5,10 +5,16 @@ from radar_data_streamer import RadarData
 
 
 class RadarPoint(object):
-    def __init__(self, local_xyz, ecef, range_velocity):
+    def __init__(self, local_xyz, ecef, range_velocity, amplitude=None,
+                 azimuth_variance=None, elevation_variance=None,
+                 confidence=None):
         self.local_xyz = local_xyz
         self.ecef = ecef
         self.range_velocity = range_velocity
+        self.amplitude = amplitude
+        self.azimuth_variance = azimuth_variance
+        self.elevation_variance = elevation_variance
+        self.confidence = confidence
 
     @classmethod
     def from_proto(cls, point_pb):
@@ -22,7 +28,9 @@ class RadarPoint(object):
         if np.isnan(ecef[0]) or np.isnan(ecef[1]) or np.isnan(ecef[2]):
             return None
 
-        point = cls(xyz, ecef, point_pb.range_velocity)
+        point = cls(xyz, ecef, point_pb.range_velocity, point_pb.amplitude,
+                    point_pb.azimuth_variance, point_pb.elevation_variance,
+                    point_pb.confidence)
         return point
 
 
