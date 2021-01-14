@@ -62,7 +62,7 @@ def main():
                         action='store_true')
     parser.add_argument('--no-point-cloud',
                         action='store_true')
-    parser.add_argument('--no-lidar',
+    parser.add_argument('--lidar',
                         action='store_true')
 
     args = parser.parse_args()
@@ -79,14 +79,14 @@ def main():
         io_path = get_io_paths('', args.input_dir, args.output_dir,
                                no_sar=args.no_sar,
                                no_point_cloud=args.no_point_cloud,
-                               no_lidar=args.no_lidar)
+                               lidar=args.lidar)
         input_output_paths.append(io_path)
     else:
         for radar_name in args.radar_name:
             io_path = get_io_paths(radar_name, args.input_dir, args.output_dir,
                                    no_sar=args.no_sar,
                                    no_point_cloud=args.no_point_cloud,
-                                   no_lidar=args.no_lidar)
+                                   lidar=args.lidar)
             input_output_paths.append(io_path)
 
     # create all videos
@@ -250,53 +250,39 @@ def to_rgb_image(render_data):
     im_rgb = None
     radar_image_display = RadarImageStreamDisplay()
 
+    # Default image region
+    xmin = 0
+    xmax = 60
+    ymin = -30
+    ymax = 30
+    im_res = 0.1
+    imsize_y = int((ymax - ymin) / im_res)
+    imsize_x = int((xmax - xmin) / im_res)
+
     if render_data.image is not None:
         im_rgb = radar_image_display(render_data.image.image)
-
+    else:
+        im_rgb = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
     if render_data.pc is not None:
-        if im_rgb is not None:
+        if render_data.image is not None:
             for pt in render_data.pc.point_cloud:
                 # use the image model to project ecef points to sar
                 y, x = render_data.image.image_model.global_to_image(pt.ecef)
                 draw_tracker_point(im_rgb, y, x, pt.range_velocity)
 
         else:
-            # create default image region
-            xmin = 0
-            xmax = 60
-            ymin = -30
-            ymax = 30
-            im_res = 0.1
-
-            imsize_y = int((ymax - ymin) / im_res)
-            imsize_x = int((xmax - xmin) / im_res)
-
-            im_rgb = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
-
             for pt in render_data.pc.point_cloud:
                 im_pt_x = (pt.local_xyz[0] - xmin) / im_res
                 im_pt_y = (pt.local_xyz[1] - ymin) / im_res
                 draw_tracker_point(im_rgb, im_pt_y, im_pt_x, pt.range_velocity)
     if render_data.lidar is not None:
-        if im_rgb is not None:
+        if render_data.image is not None:
             for pt in render_data.lidar.point_cloud:
                 # use the image model to project ecef points to sar
                 y, x = render_data.image.image_model.global_to_image(
                     pt.position_global)
                 draw_lidar_point(im_rgb, y, x)
         else:
-            # create default image region
-            xmin = 0
-            xmax = 60
-            ymin = -30
-            ymax = 30
-            im_res = 0.1
-
-            imsize_y = int((ymax - ymin) / im_res)
-            imsize_x = int((xmax - xmin) / im_res)
-
-            im_rgb = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
-
             for pt in render_data.lidar.point_cloud:
                 im_pt_x = (pt.position_local[0] - xmin) / im_res
                 im_pt_y = (pt.position_local[1] - ymin) / im_res
@@ -338,9 +324,10 @@ def draw_lidar_point(im, y, x):
                thickness=-1)
 
 def get_io_paths(radar_name, input_dir, output_dir,
-                 no_sar=False, no_point_cloud=False, no_lidar=False):
+                 no_sar=False, no_point_cloud=False, lidar=False):
     image_pbs_path = None
     pc_pbs_path = None
+    lidar_pbs_path = None
     video_output_path = None
     image_model_output_path = None
 
@@ -358,7 +345,7 @@ def get_io_paths(radar_name, input_dir, output_dir,
         assert exists(pc_pbs_path), \
             "radar point cloud at [%s] is not found" % pc_pbs_path
 
-    if no_lidar:
+    if not lidar:
         print("lidar display is turned off")
     else:
         lidar_pbs_path = join(input_dir, "lidar.pbs")
