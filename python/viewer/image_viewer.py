@@ -162,7 +162,7 @@ def main():
 
 def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
     """
-    this function synchronizes the image and point cloud stream
+    this function synchronizes the image, point cloud, and lidar streams
     """
     radar_image_streamer = None
     point_cloud_streamer = None
@@ -197,7 +197,7 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
 
         for key in streams:
             data[key] = next(streams[key])
-        # Synchronize the streams one at the start
+        # Synchronize the streams once at the start
         while True:
             # Check if data streams are synced
             max_timestamp = 0
@@ -262,31 +262,31 @@ def to_rgb_image(render_data):
     if render_data.image is not None:
         im_rgb = radar_image_display(render_data.image.image)
     else:
-        im_rgb = np.zeros((imsize_y, imsize_x, 3), dtype=np.uint8)
+        im_rgb = np.zeros((imsize_x, imsize_y, 3), dtype=np.uint8)
     if render_data.pc is not None:
         if render_data.image is not None:
             for pt in render_data.pc.point_cloud:
                 # use the image model to project ecef points to sar
-                y, x = render_data.image.image_model.global_to_image(pt.ecef)
-                draw_tracker_point(im_rgb, y, x, pt.range_velocity)
+                x, y = render_data.image.image_model.global_to_image(pt.ecef)
+                draw_tracker_point(im_rgb, x, y, pt.range_velocity)
 
         else:
             for pt in render_data.pc.point_cloud:
-                im_pt_x = (pt.local_xyz[0] - xmin) / im_res
-                im_pt_y = (pt.local_xyz[1] - ymin) / im_res
-                draw_tracker_point(im_rgb, im_pt_y, im_pt_x, pt.range_velocity)
+                im_pt_x = (pt.local_xyz[1] - xmin) / im_res
+                im_pt_y = (pt.local_xyz[0] - ymin) / im_res
+                draw_tracker_point(im_rgb, im_pt_x, im_pt_y, pt.range_velocity)
     if render_data.lidar is not None:
         if render_data.image is not None:
             for pt in render_data.lidar.point_cloud:
                 # use the image model to project ecef points to sar
-                y, x = render_data.image.image_model.global_to_image(
+                x, y = render_data.image.image_model.global_to_image(
                     pt.position_global)
-                draw_lidar_point(im_rgb, y, x)
+                draw_lidar_point(im_rgb, x, y)
         else:
             for pt in render_data.lidar.point_cloud:
-                im_pt_x = (pt.position_local[0] - xmin) / im_res
-                im_pt_y = (pt.position_local[1] - ymin) / im_res
-                draw_lidar_point(im_rgb, im_pt_y, im_pt_x)
+                im_pt_x = (pt.position_local[1] - xmin) / im_res
+                im_pt_y = (-pt.position_local[0] - ymin) / im_res
+                draw_lidar_point(im_rgb, im_pt_x, im_pt_y)
 
 
     return im_rgb
@@ -304,21 +304,21 @@ cmap = ScalarMappable(norm=Normalize(vmin=-20, vmax=20),
                       cmap=plt.get_cmap('RdYlGn'))
 
 
-def draw_tracker_point(im, y, x, range_velocity):
+def draw_tracker_point(im, x, y, range_velocity):
     c = cmap.to_rgba(range_velocity)
     r = int(255*c[0])
     g = int(255*c[1])
     b = int(255*c[2])
 
     cv2.circle(im,
-               center=(int(y), int(x)),
+               center=(int(x), int(y)),
                radius=1,
                color=(r, g, b),
                thickness=-1)
 
-def draw_lidar_point(im, y, x):
+def draw_lidar_point(im, x, y):
     cv2.circle(im,
-               center=(int(y), int(x)),
+               center=(int(x), int(y)),
                radius=1,
                color=(135, 206, 250),
                thickness=-1)
