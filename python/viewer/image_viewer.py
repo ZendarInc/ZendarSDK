@@ -157,6 +157,7 @@ def main():
 
             combined_frame = np.vstack((left_frame, right_frame))
             combined_frame = cv2.cvtColor(combined_frame, cv2.COLOR_BGR2RGB)
+            combined_frame = cv2.rotate(combined_frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
             if merged_video_writer is None:
                 (im_height, im_width, _) = combined_frame.shape
