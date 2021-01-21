@@ -46,7 +46,7 @@ def main():
                         default=None)
     parser.add_argument('--radar-name',
                         action='append',
-                        help="output video with specified radar serial number",
+                        help="generate video with specific radar serial (left radar first).",
                         required=True)
     parser.add_argument('--frame-rate',
                         type=int,
@@ -56,6 +56,8 @@ def main():
                         type=int,
                         help="video compression quality factor",
                         default=25)
+    parser.add_argument('--show-timestamp',
+                        action='store_true')
     parser.add_argument('--no-sar',
                         action='store_true')
     parser.add_argument('--no-point-cloud',
@@ -74,7 +76,7 @@ def main():
                                no_point_cloud=args.no_point_cloud)
         input_output_paths.append(io_path)
 
-    # create all videos
+    # create individual outputs
     for io_path in input_output_paths:
         video_writer = None
 
@@ -106,7 +108,8 @@ def main():
 
                     last_frame_id = frame_id
 
-                im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
+                if args.show_timestamp:
+                    im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
 
                 # setup onscreen display
                 if artist is None:
@@ -137,6 +140,41 @@ def main():
                 artist.set_data(im_rgb)
                 fig.canvas.draw()
                 plt.pause(1e-4)
+
+    # This is not the greatest way to merge videos from multiple cameras.
+    # For visualization is this okey
+    if len(input_output_paths) != 2:
+        return
+
+    left_video = cv2.VideoCapture(input_output_paths[0].video_output_path)
+    right_video = cv2.VideoCapture(input_output_paths[1].video_output_path)
+    merged_video_path = join(args.output_dir, "merged_video.mp4")
+    merged_video_writer = None
+
+    print("merging video ...")
+    frame_count = 0
+    with ExitStack() as stack:
+        while left_video.isOpened() and right_video.isOpened():
+            _, left_frame = left_video.read()
+            _, right_frame = right_video.read()
+
+            combined_frame = np.vstack((left_frame, right_frame))
+            combined_frame = cv2.cvtColor(combined_frame, cv2.COLOR_BGR2RGB)
+            combined_frame = cv2.rotate(combined_frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+            if merged_video_writer is None:
+                (im_height, im_width, _) = combined_frame.shape
+                merged_video_writer = VideoWriter(merged_video_path,
+                                                  im_width, im_height,
+                                                  args.frame_rate,
+                                                  args.quality_factor)
+                merged_video_writer = stack.enter_context(merged_video_writer)
+
+            merged_video_writer(combined_frame)
+            frame_count += 1
+
+            if frame_count % 100 == 0:
+                print("wrote %s frames" % frame_count)
 
 
 def sync_streams(image_pbs_path, pc_pbs_path):
@@ -248,7 +286,8 @@ def overlay_timestamp(timestamp, frame_id, im_rgb):
     return im_rgb
 
 
-cmap = ScalarMappable(norm=Normalize(vmin=-20, vmax=20),
+MAX_DOPPLER = 20
+cmap = ScalarMappable(norm=Normalize(vmin=-MAX_DOPPLER, vmax=MAX_DOPPLER),
                       cmap=plt.get_cmap('RdYlGn'))
 
 
@@ -276,15 +315,18 @@ def get_io_paths(radar_name, input_dir, output_dir,
         print("radar image display is turned off")
     else:
         image_pbs_path = join(input_dir, radar_name + "_images.pbs")
-        assert exists(image_pbs_path), \
-            "radar image at [%s] is not found" % image_pbs_path
+
+        if not exists(image_pbs_path):
+            image_pbs_path = None
+            print("radar image at [%s] is not found" % image_pbs_path)
 
     if no_point_cloud:
         print("radar point cloud display is turned off")
     else:
         pc_pbs_path = join(input_dir, radar_name + "_points.pbs")
-        assert exists(pc_pbs_path), \
-            "radar point cloud at [%s] is not found" % pc_pbs_path
+        if not exists(pc_pbs_path):
+            pc_pbs_path = None
+            print("radar point cloud at [%s] is not found" % pc_pbs_path)
 
     if output_dir is not None:
         video_output_path = join(output_dir, radar_name + ".mp4")
