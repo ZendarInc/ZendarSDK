@@ -103,10 +103,10 @@ def main():
                     timestamp = image_pc_pair.image.timestamp
                     frame_id = image_pc_pair.image.frame_id
 
-                    if frame_id - last_frame_id > 1 and frame_id > 0:
-                        print("DROP FRAME DETECTED: %d" % frame_id)
+                if frame_id - last_frame_id > 1 and frame_id > 0:
+                    print("DROP FRAME DETECTED: %d" % frame_id)
 
-                    last_frame_id = frame_id
+                last_frame_id = frame_id
 
                 if args.show_timestamp:
                     im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
