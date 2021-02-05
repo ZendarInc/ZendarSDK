@@ -30,6 +30,5 @@ example: example.cc
 	${CXX} $< -I${ZENDAR_INSTALL_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
 
 clean:
-	rm example
-	rm -r ${ZENDAR_PROTO_PATH}
-  	done
+	rm -f example
+	rm -rf ${ZENDAR_PROTO_PATH}
