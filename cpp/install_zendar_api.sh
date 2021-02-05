@@ -1,8 +1,8 @@
 #!/bin/sh
 
 #Install debian packages
-dpkg -i zendar_core*.deb
-dpkg -i zendar_zenapi*.deb
+dpkg -i zendar-core*.deb
+dpkg -i zendar-zenapi*.deb
 
 #Install protobufs
 src_dir=/usr/include/zenproto
@@ -13,4 +13,4 @@ g++ -fPIC $src_dir/*.pb.cc -shared -o $dst_dir/libzenproto.so
 cp $src_dir/*.pb.h $dst_dir
 
 # build example program
-g++ main.cc -I/usr/lib -L/usr/lib -lzendar_api -lglog  -lzenproto  -lprotobuf  -lshannon_core -lnng -lpthread -o prog
+g++ example.cc -I/usr/lib -L/usr/lib -lzendar_api -lglog  -lzenproto  -lprotobuf  -lshannon_core -lnng -lpthread -o example
