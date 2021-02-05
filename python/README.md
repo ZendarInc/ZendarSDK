@@ -10,6 +10,7 @@ with the Zendar data
         python3-pip             \
         protobuf-compiler
 
+    $> pip3 install --upgrade pip
     $> pip3 install -r requirements.txt
 
 ## Compile protobuffers
