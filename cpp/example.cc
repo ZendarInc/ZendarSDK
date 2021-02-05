@@ -6,12 +6,17 @@
 
 int main() {
   zendar::ZendarReceiver rcv("tcp://127.0.0.1:6342");
-  rcv.SubscribeImages(10);
-  printf("Success\n");
+  rcv.SubscribeImages(100);
+  printf("Successful Initialization\n");
   zen_proto::data::Image image;
+  zendar::ZendarError error;
   for (int i=0; i<10; ++i) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));    
-    rcv.NextImage(image);
+    error = rcv.NextImage(image);
+    if (error) {
+      printf("Failed to receive\n");
+    } else {
+      printf("Received image\n");
+    }
   }
   rcv.UnsubscribeImages();
   return 1;
