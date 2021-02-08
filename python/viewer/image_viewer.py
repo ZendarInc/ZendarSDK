@@ -67,6 +67,8 @@ def main():
                         action='store_true')
     parser.add_argument('--lidar',
                         action='store_true')
+    parser.add_argument('--color-by-elevation',
+                        action='store_true')
 
     args = parser.parse_args()
 
@@ -107,7 +109,7 @@ def main():
                     break
 
                 # create rgb image from point cloud / SAR
-                im_rgb = to_rgb_image(render_data)
+                im_rgb = to_rgb_image(render_data, args.color_by_elevation)
 
                 # flip image because image (0,0) is at top left corner
                 # while radar image (0,0) is at bottom left corner
@@ -283,7 +285,19 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
                     lidar = data['lidar'] if 'lidar' in streams else None
                     yield RenderData(image=image, pc=pc, lidar=lidar)
 
-def to_rgb_image(render_data):
+
+MAX_DOPPLER = 20
+cmap_doppler = ScalarMappable(norm=Normalize(vmin=-MAX_DOPPLER,
+                                             vmax=MAX_DOPPLER),
+                              cmap=plt.get_cmap('RdYlGn'))
+
+MAX_ELEVATION = 7
+cmap_elevation = ScalarMappable(norm=Normalize(vmin=-MAX_ELEVATION,
+                                               vmax=MAX_ELEVATION),
+                                cmap=plt.get_cmap('PuOr'))
+
+
+def to_rgb_image(render_data, color_by_elevation=False):
     """
     convert raw sar image and / or point cloud into 8-bit RGB for display
     """
@@ -308,13 +322,20 @@ def to_rgb_image(render_data):
             for pt in render_data.pc.point_cloud:
                 # use the image model to project ecef points to sar
                 x, y = render_data.image.image_model.global_to_image(pt.ecef)
-                draw_tracker_point(im_rgb, x, y, pt.range_velocity)
-
+                if color_by_elevation:
+                    color = cmap_elevation.to_rgba(pt.local_xyz[2])
+                else:
+                    color = cmap_doppler.to_rgba(pt.range_velocity)
+                draw_tracker_point(im_rgb, x, y, color)
         else:
             for pt in render_data.pc.point_cloud:
                 im_pt_x = (pt.local_xyz[1] - xmin) / im_res
                 im_pt_y = (pt.local_xyz[0] - ymin) / im_res
-                draw_tracker_point(im_rgb, im_pt_x, im_pt_y, pt.range_velocity)
+                if color_by_elevation:
+                    color = cmap_elevation.to_rgba(pt.local_xyz[2])
+                else:
+                    color = cmap_doppler.to_rgba(pt.range_velocity)
+                draw_tracker_point(im_rgb, im_pt_x, im_pt_y, color)
     if render_data.lidar is not None:
         if render_data.image is not None:
             for pt in render_data.lidar.point_cloud:
@@ -328,7 +349,6 @@ def to_rgb_image(render_data):
                 im_pt_y = (-pt.position_local[0] - ymin) / im_res
                 draw_lidar_point(im_rgb, im_pt_x, im_pt_y)
 
-
     return im_rgb
 
 
@@ -340,13 +360,7 @@ def overlay_timestamp(timestamp, frame_id, im_rgb):
     return im_rgb
 
 
-MAX_DOPPLER = 20
-cmap = ScalarMappable(norm=Normalize(vmin=-MAX_DOPPLER, vmax=MAX_DOPPLER),
-                      cmap=plt.get_cmap('RdYlGn'))
-
-
-def draw_tracker_point(im, x, y, range_velocity):
-    c = cmap.to_rgba(range_velocity)
+def draw_tracker_point(im, x, y, c):
     r = int(255*c[0])
     g = int(255*c[1])
     b = int(255*c[2])
