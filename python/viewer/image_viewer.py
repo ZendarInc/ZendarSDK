@@ -318,26 +318,23 @@ def to_rgb_image(render_data, color_by_elevation=False):
     else:
         im_rgb = np.zeros((imsize_x, imsize_y, 3), dtype=np.uint8)
     if render_data.pc is not None:
-        cmap = cmap_doppler
-        if color_by_elevation:
-            cmap = cmap_elevation
         if render_data.image is not None:
             for pt in render_data.pc.point_cloud:
                 # use the image model to project ecef points to sar
                 x, y = render_data.image.image_model.global_to_image(pt.ecef)
                 if color_by_elevation:
-                    color = cmap.to_rgba(pt.local_xyz[2])
+                    color = cmap_elevation.to_rgba(pt.local_xyz[2])
                 else:
-                    color = cmap.to_rgba(pt.range_velocity)
+                    color = cmap_doppler.to_rgba(pt.range_velocity)
                 draw_tracker_point(im_rgb, x, y, color)
         else:
             for pt in render_data.pc.point_cloud:
                 im_pt_x = (pt.local_xyz[1] - xmin) / im_res
                 im_pt_y = (pt.local_xyz[0] - ymin) / im_res
                 if color_by_elevation:
-                    color = cmap.to_rgba(pt.local_xyz[2])
+                    color = cmap_elevation.to_rgba(pt.local_xyz[2])
                 else:
-                    color = cmap.to_rgba(pt.range_velocity)
+                    color = cmap_doppler.to_rgba(pt.range_velocity)
                 draw_tracker_point(im_rgb, im_pt_x, im_pt_y, color)
     if render_data.lidar is not None:
         if render_data.image is not None:
