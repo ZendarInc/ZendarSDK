@@ -23,10 +23,15 @@ debian:
 
 protocol: debian
 	${PROTOC} -I=${ZENDAR_PROTO_PATH} --cpp_out=${ZENDAR_PROTO_PATH} ${ZENDAR_PROTO_PATH}/*.proto
-	${CXX} -fPIC ${ZENDAR_PROTO_PATH}/*.pb.cc -shared -o ${ZENDAR_INSTALL_PATH}/libzenproto.so
+	${CXX} -fPIC ${ZENDAR_PROTO_PATH}/*.pb.cc -shared -lprotobuf -o ${ZENDAR_INSTALL_PATH}/libzenproto.so
 	cp ${ZENDAR_PROTO_PATH}/*.pb.h ${ZENDAR_INSTALL_PATH}
 
-example: example.cc
+example: example-simple example-receiver
+
+example-simple: example-simple.cc
+	${CXX} $< -I${ZENDAR_INSTALL_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
+
+example-receiver: example-receiver.cc
 	${CXX} $< -I${ZENDAR_INSTALL_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
 
 clean:
