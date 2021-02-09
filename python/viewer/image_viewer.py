@@ -123,14 +123,13 @@ def main():
                 elif render_data.image is not None:
                     timestamp = render_data.image.timestamp
                     frame_id = render_data.image.frame_id
-
-                if frame_id - last_frame_id > 1 and frame_id > 0:
-                    print("DROP FRAME DETECTED: %d" % frame_id)
-
                 else:
                     # Lidar-only doesn't use the frame_id
                     timestamp = render_data.lidar.timestamp
                     frame_id = 0
+
+                if frame_id - last_frame_id > 1 and frame_id > 0:
+                    print("DROP FRAME DETECTED: %d" % frame_id)
                 last_frame_id = frame_id
 
                 if args.show_timestamp:
