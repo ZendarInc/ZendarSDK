@@ -163,7 +163,7 @@ def main():
                 # on screen display
                 artist.set_data(im_rgb)
                 fig.canvas.draw()
-                plt.pause(1e-4)
+                fig.canvas.flush_events()
 
     # This is not the greatest way to merge videos from multiple cameras.
     # For visualization is this okey
