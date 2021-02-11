@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 import cv2
+from multiprocessing import Process
 
 import data_pb2
 from radar_image import (
@@ -72,10 +73,6 @@ def main():
 
     args = parser.parse_args()
 
-    fig = plt.figure()
-    fig.show()
-    artist = None
-
     input_output_paths = []
     if (not args.no_sar) or (not args.no_point_cloud):
         assert(args.radar_name is not None), \
@@ -86,6 +83,7 @@ def main():
                                no_point_cloud=args.no_point_cloud,
                                lidar=args.lidar)
         input_output_paths.append(io_path)
+        args.radar_name.append('')
     else:
         for radar_name in args.radar_name:
             io_path = get_io_paths(radar_name, args.input_dir, args.output_dir,
@@ -95,75 +93,16 @@ def main():
             input_output_paths.append(io_path)
 
     # create individual outputs
-    for io_path in input_output_paths:
-        video_writer = None
-
-        last_frame_id = 0
-        with ExitStack() as stack:
-            for render_data in sync_streams(io_path.image_pbs_path,
-                                              io_path.pc_pbs_path,
-                                              io_path.lidar_pbs_path):
-                if render_data.image is None \
-                   and render_data.pc is None \
-                   and render_data.lidar is None:
-                    break
-
-                # create rgb image from point cloud / SAR
-                im_rgb = to_rgb_image(render_data, args.color_by_elevation)
-
-                # flip image because image (0,0) is at top left corner
-                # while radar image (0,0) is at bottom left corner
-                im_rgb = np.copy(np.flip(im_rgb, axis=0))
-                (im_height, im_width, _) = im_rgb.shape
-
-                # get timestamp and frame id
-                if render_data.pc is not None:
-                    timestamp = render_data.pc.timestamp
-                    frame_id = render_data.pc.frame_id
-                elif render_data.image is not None:
-                    timestamp = render_data.image.timestamp
-                    frame_id = render_data.image.frame_id
-                else:
-                    # Lidar-only doesn't use the frame_id
-                    timestamp = render_data.lidar.timestamp
-                    frame_id = 0
-
-                if frame_id - last_frame_id > 1 and frame_id > 0:
-                    print("DROP FRAME DETECTED: %d" % frame_id)
-                last_frame_id = frame_id
-
-                if args.show_timestamp:
-                    im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
-
-                # setup onscreen display
-                if artist is None:
-                    artist = fig.gca().imshow(
-                        np.zeros(im_rgb.shape, dtype=np.uint8))
-
-                # setup video writer and image model writer
-                if args.output_dir is not None and video_writer is None:
-                    video_writer = VideoWriter(io_path.video_output_path,
-                                               im_width, im_height,
-                                               args.frame_rate,
-                                               args.quality_factor)
-                    video_writer = stack.enter_context(video_writer)
-
-                    proto_writer = stack.enter_context(
-                        ProtoStreamWriter(io_path.image_model_output_path))
-
-                # write out frame
-                if video_writer is not None:
-                    video_writer(im_rgb)
-
-                    if render_data.image is not None:
-                        proto_out = render_data.image.to_proto(timestamp,
-                                                                 frame_id)
-                        proto_writer.write(proto_out)
-
-                # on screen display
-                artist.set_data(im_rgb)
-                fig.canvas.draw()
-                fig.canvas.flush_events()
+    process_list = []
+    for io_path, radar_name in zip(input_output_paths, args.radar_name):
+        p = Process(target=visualize_single_radar,
+                    args=(io_path, radar_name, args.output_dir, args.frame_rate,
+                          args.quality_factor, args.show_timestamp,
+                          args.color_by_elevation))
+        p.start()
+        process_list.append(p)
+    for p in process_list:
+        p.join()
 
     # This is not the greatest way to merge videos from multiple cameras.
     # For visualization is this okey
@@ -199,6 +138,84 @@ def main():
 
             if frame_count % 100 == 0:
                 print("wrote %s frames" % frame_count)
+
+
+def visualize_single_radar(io_path, radar_name, output_dir=None, frame_rate=10,
+                           quality_factor=25, show_timestamp=False,
+                           color_by_elevation=False):
+    fig = plt.figure()
+    fig.show()
+    ax = None
+    artist = None
+    video_writer = None
+
+    last_frame_id = 0
+    with ExitStack() as stack:
+        for render_data in sync_streams(io_path.image_pbs_path,
+                                          io_path.pc_pbs_path,
+                                          io_path.lidar_pbs_path):
+            if render_data.image is None \
+               and render_data.pc is None \
+               and render_data.lidar is None:
+                break
+
+            # create rgb image from point cloud / SAR
+            im_rgb = to_rgb_image(render_data, color_by_elevation)
+
+            # flip image because image (0,0) is at top left corner
+            # while radar image (0,0) is at bottom left corner
+            im_rgb = np.copy(np.flip(im_rgb, axis=0))
+            (im_height, im_width, _) = im_rgb.shape
+
+            # get timestamp and frame id
+            if render_data.pc is not None:
+                timestamp = render_data.pc.timestamp
+                frame_id = render_data.pc.frame_id
+            elif render_data.image is not None:
+                timestamp = render_data.image.timestamp
+                frame_id = render_data.image.frame_id
+            else:
+                # Lidar-only doesn't use the frame_id
+                timestamp = render_data.lidar.timestamp
+                frame_id = 0
+
+            if frame_id - last_frame_id > 1 and frame_id > 0:
+                print("DROP FRAME DETECTED: %d" % frame_id + '(' + radar_name + ')')
+            last_frame_id = frame_id
+
+            if show_timestamp:
+                im_rgb = overlay_timestamp(timestamp, frame_id, im_rgb)
+
+            # setup onscreen display
+            if artist is None:
+                ax = fig.gca()
+                artist = ax.imshow(np.zeros(im_rgb.shape, dtype=np.uint8))
+
+            # setup video writer and image model writer
+            if output_dir is not None and video_writer is None:
+                video_writer = VideoWriter(io_path.video_output_path,
+                                           im_width, im_height,
+                                           frame_rate,
+                                           quality_factor)
+                video_writer = stack.enter_context(video_writer)
+
+                proto_writer = stack.enter_context(
+                    ProtoStreamWriter(io_path.image_model_output_path))
+
+            # write out frame
+            if video_writer is not None:
+                video_writer(im_rgb)
+
+                if render_data.image is not None:
+                    proto_out = render_data.image.to_proto(timestamp,
+                                                           frame_id)
+                    proto_writer.write(proto_out)
+
+            # on screen display
+            artist.set_data(im_rgb)
+            ax.set_title(radar_name + ": %f" % timestamp)
+            fig.canvas.draw()
+            fig.canvas.flush_events()
 
 
 def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
