@@ -1,13 +1,15 @@
 from os.path import join, exists
-import sys
 from contextlib import ExitStack
 import argparse
 import numpy as np
 from collections import namedtuple
+
+import cv2
+import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
-import cv2
+
 from multiprocessing import Process
 
 import data_pb2
@@ -35,6 +37,8 @@ RenderData = namedtuple('RenderData', ['image',
                                        'pc',
                                        'lidar'])
 
+# This script was tested with Qt5Agg to provide all the functionnalities
+matplotlib.use('Qt5Agg')
 
 def main():
     parser = argparse.ArgumentParser()
