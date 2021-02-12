@@ -293,7 +293,7 @@ cmap_doppler = ScalarMappable(norm=Normalize(vmin=-MAX_DOPPLER,
 MAX_ELEVATION = 7
 cmap_elevation = ScalarMappable(norm=Normalize(vmin=-MAX_ELEVATION,
                                                vmax=MAX_ELEVATION),
-                                cmap=plt.get_cmap('PuOr'))
+                                cmap=plt.get_cmap('PuOr_r'))
 
 
 def to_rgb_image(render_data, color_by_elevation=False):
