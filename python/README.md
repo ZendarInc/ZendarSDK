@@ -15,11 +15,8 @@ with the Zendar data
 
 ## Compile protobuffers
 
-This only needs to be ran once unless the protobufs are updated
-
-    $> pushd ..
-    $> sh make_data_proto.sh
-    $> popd
+The protobufs are compiled and installed as part of the C++ installation
+process, so please run that if you have not already.
 
 ## Setup Python environment
 
