@@ -12,7 +12,7 @@ from matplotlib.colors import Normalize
 
 from multiprocessing import Process
 
-import data_pb2
+import data_pb2, tracker_pb2, lidar_pb2
 from radar_image import (
     RadarImage,
 )
@@ -240,13 +240,13 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
         if pc_pbs_path is not None:
             point_cloud_streamer = stack.enter_context(
                 ProtoStreamReader(pc_pbs_path,
-                                  data_pb2.TrackerState,
+                                  tracker_pb2.TrackerState,
                                   RadarPointCloud))
 
         if lidar_pbs_path is not None:
             lidar_cloud_streamer = stack.enter_context(
                 ProtoStreamReader(lidar_pbs_path,
-                                  data_pb2.LidarPointsFrame,
+                                  lidar_pb2.LidarPointsFrame,
                                   LidarPointsFrame))
         streams = {}
         data = {}
