@@ -3,7 +3,7 @@ CXX = g++
 C = $(CXX)
 PROTOC = protoc
 
-ZENDAR_PROTO_PATH=/usr/include/zenproto
+ZENDAR_PROTO_PATH=/usr/lib/zendar
 ZENDAR_INSTALL_PATH=/usr/lib
 ZENDAR_CORE_DEB=$(wildcard zendar-core*.deb)
 ZENDAR_API_DEB=$(wildcard zendar-zenapi*.deb)
@@ -23,6 +23,7 @@ debian:
 
 protocol: debian
 	${PROTOC} -I=${ZENDAR_PROTO_PATH} --cpp_out=${ZENDAR_PROTO_PATH} ${ZENDAR_PROTO_PATH}/*.proto
+	${PROTOC} -I=${ZENDAR_PROTO_PATH} --python_out=${ZENDAR_PROTO_PATH} ${ZENDAR_PROTO_PATH}/*.proto
 	${CXX} -fPIC ${ZENDAR_PROTO_PATH}/*.pb.cc -shared -lprotobuf -o ${ZENDAR_INSTALL_PATH}/libzenproto.so
 	cp ${ZENDAR_PROTO_PATH}/*.pb.h ${ZENDAR_INSTALL_PATH}
 
@@ -35,5 +36,5 @@ example-receiver: example-receiver.cc
 	${CXX} $< -I${ZENDAR_INSTALL_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
 
 clean:
-	rm -f example
-	rm -rf ${ZENDAR_PROTO_PATH}
+	rm -f example-simple
+	rm -f example-receiver
