@@ -45,7 +45,8 @@ then reports the calibration contents of the specified file.
 
 ## RadarFrame Format
 
-| Attribute | Description |
+| Attribute           | Description                                    |
+| ------------------- | ---------------------------------------------- |
 | fast\_time\_samples | Number of fast time (range) samples per chirp  |
 | adc\_sample\_rate   | Frequency (Hz) of the ADC                      |
 | ramp\_slope         | Chirp ramp slope (MHz/us)                      |
