@@ -1,0 +1,95 @@
+////////////////////////////////////////////////////////////////////////////////
+// ACQUISITION
+// ---------------------------------------------------------------------------//
+//  Messages defined in this specification are used to define an acquisition
+// platform.
+////////////////////////////////////////////////////////////////////////////////
+
+syntax = "proto2";
+
+
+package zen;
+
+
+// -------------------------------------------------------------------------- //
+
+message SensorRadar {
+    required string name   = 1;
+    optional string serial = 2;
+    optional string array_name = 3;
+}
+
+message SensorRadarModule {
+    required SensorRadar controller = 1;
+    repeated SensorRadar peripheral = 2;
+    optional string      name       = 3;
+    optional string      array_name = 4;
+}
+
+message SensorPose {
+    required string name   = 1;
+    optional string serial = 2;
+};
+
+message SensorLidar {
+    required string name   = 1;
+    optional string serial = 2;
+};
+
+message SensorCamera {
+    required string name   = 1;
+}
+
+message SensorCANBus {
+    required string name = 1;
+    required string serial = 2;
+}
+
+// -------------------------------------------------------------------------- //
+message Acquisition {
+    enum Platform {
+        CNC_RAILING = 1;
+        SIMULATION  = 2;
+        IROBOT      = 3;
+        STATIONARY  = 4;
+        ZENMONSTER  = 5;
+    };
+
+    enum Version {
+        // {
+        // These versions technically never existed in protobuf form, these
+        // are simply here for thoroughness.
+        VERSION_00 = 0;
+        VERSION_01 = 1;
+        // }
+
+        // Version 2 used the `Frame` message with repeated `Chirp` values, it
+        // was primarily for acquiring data through UART, where having less than
+        // 4 rx values was still possible.
+        VERSION_02 = 2;
+
+        // Version 3 deprecated the `Frame` and `Chirp` in lieu of
+        // `ChirpResponse` and `IQ` messages.  These new messages are primarily
+        // designed for LVDS where 4 RX antennas are required.  It aditionally
+        // changed the IQ type to fixed length, which improves the
+        // encoding/decoding speeds.
+        //
+        // There is also quite a bit more metadata in the `ChirpResponse` which
+        // allows a user to understand TX antenna and its frame index.
+        VERSION_03 = 3;
+
+        // Version 4 integrates the VN200 extrinsics.
+        VERSION_04 = 4;
+    }
+
+    required Platform           platform       = 1;
+    optional SensorPose         pose           = 2;  // TODO: change to 'tracklog'
+    repeated SensorRadar        radars         = 3;
+    repeated SensorLidar        lidars         = 9;
+    optional SensorCANBus       canbus         = 10;
+    optional Version            version        = 4 [default=VERSION_04];
+    optional SensorPose         dynamics       = 5;
+    repeated SensorRadarModule  radar_modules  = 6;
+    repeated SensorCamera       cameras        = 7;
+    optional string             acquisition_id = 8;
+};

@@ -1,0 +1,530 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+
+syntax = "proto2";
+import "primitive.proto";
+
+package zen;
+
+
+// -------------------------------------------------------------------------- //
+// CONFIG
+// -------------------------------------------------------------------------- //
+
+message DfeOutputMode {
+    enum Mode {
+        CHIRP      = 1;
+        CONTINUOUS = 2;
+    };
+
+    required uint32 mode = 1;
+};
+
+
+enum RxMode {      // 'Arte de Wang'
+    RX_0  =     1; // 0b0000000000000001
+    RX_1  =     2; // 0b0000000000000010
+    RX_2  =     4; // 0b0000000000000100
+    RX_3  =     8; // 0b0000000000001000
+    RX_4  =    16; // 0b0000000000010000
+    RX_5  =    32; // 0b0000000000100000
+    RX_6  =    64; // 0b0000000001000000
+    RX_7  =   128; // 0b0000000010000000
+    RX_8  =   256; // 0b0000000100000000
+    RX_9  =   512; // 0b0000001000000000
+    RX_10 =  1024; // 0b0000010000000000
+    RX_11 =  2048; // 0b0000100000000000
+    RX_12 =  4096; // 0b0001000000000000
+    RX_13 =  8192; // 0b0010000000000000
+    RX_14 = 16384; // 0b0100000000000000
+    RX_15 = 32768; // 0b1000000000000000
+};
+
+enum TxMode {
+    TX_NONE        =     0; // 000000000000
+    TX_0           =     1; // 000000000001
+    TX_1           =     2; // 000000000010
+    TX_2           =     4; // 000000000100
+    TX_3           =     8; // 000000001000
+    TX_4           =    16; // 000000010000
+    TX_5           =    32; // 000000100000
+    TX_6           =    64; // 000001000000
+    TX_7           =   128; // 000010000000
+    TX_8           =   256; // 000100000000
+    TX_9           =   512; // 001000000000
+    TX_10          =  1024; // 010000000000
+    TX_11          =  2048; // 100000000000
+    tX_0_1         =   3; // 00000011
+    tX_0_2         =   5; // 00000101
+    tX_0_3         =   9; // 00001001
+    tX_0_4         =  17; // 00010001
+    tX_0_5         =  33; // 00100001
+    tX_1_2         =   6; // 00000110
+    tX_1_3         =  10; // 00001010
+    tX_1_4         =  18; // 00010010
+    tX_1_5         =  34; // 00100010
+    tX_2_3         =  12; // 00001100
+    tX_2_4         =  20; // 00010100
+    tX_2_5         =  36; // 00100100
+    tX_3_4         =  24; // 00011000
+    tX_3_5         =  40; // 00101000
+    tX_4_5         =  48; // 00110000
+    tX_0_1_2       =   7; // 00000111
+    tX_0_1_3       =  11; // 00001011
+    tX_0_1_4       =  19; // 00010011
+    tX_0_1_5       =  35; // 00100011
+    tX_0_2_3       =  13; // 00001101
+    tX_0_2_4       =  21; // 00010101
+    tX_0_2_5       =  37; // 00100101
+    tX_0_3_4       =  25; // 00011001
+    tX_0_3_5       =  41; // 00101001
+    tX_0_4_5       =  49; // 00110001
+    tX_1_2_3       =  14; // 00001110
+    tX_1_2_4       =  22; // 00010110
+    tX_1_2_5       =  38; // 00100110
+    tX_1_3_4       =  26; // 00011010
+    tX_1_3_5       =  42; // 00101010
+    tX_1_4_5       =  50; // 00110010
+    tX_2_3_4       =  28; // 00011100
+    tX_2_3_5       =  44; // 00101100
+    tX_2_4_5       =  52; // 00110100
+    tX_3_4_5       =  56; // 00111000
+    tX_0_1_2_3     =  15; // 00001111
+    tX_0_1_2_4     =  23; // 00010111
+    tX_0_1_2_5     =  39; // 00100111
+    tX_0_1_3_4     =  27; // 00011011
+    tX_0_1_3_5     =  43; // 00101011
+    tX_0_1_4_5     =  51; // 00110011
+    tX_0_2_3_4     =  29; // 00011101
+    tX_0_2_3_5     =  45; // 00101101
+    tX_0_2_4_5     =  53; // 00110101
+    tX_0_3_4_5     =  57; // 00111001
+    tX_1_2_3_4     =  30; // 00011110
+    tX_1_2_3_5     =  46; // 00101110
+    tX_1_2_4_5     =  54; // 00110110
+    tX_1_3_4_5     =  58; // 00111010
+    tX_2_3_4_5     =  60; // 00111100
+    tX_0_1_2_3_4   =  31; // 00011111
+    tX_0_1_2_3_5   =  47; // 00101111
+    tX_0_1_2_4_5   =  55; // 00110111
+    tX_0_1_3_4_5   =  59; // 00111011
+    tX_0_2_3_4_5   =  61; // 00111101
+    tX_1_2_3_4_5   =  62; // 00111110
+    tX_0_1_2_3_4_5 =  63; // 00111111
+};
+
+message ChannelConfig {
+    required uint32 rx_mode = 1;
+    required uint32 tx_mode = 2;
+
+    enum CascadeMode {
+        CASCADE_SINGLECHIP = 0;
+        CASCADE_MULTICHIP  = 1;
+        CASCADE_MULTISLAVE = 2;
+    };
+    required uint32 cascade = 3;
+};
+
+message AdcConfig {
+    enum Bits {
+        BITS_12 = 0; // 0x0
+        BITS_14 = 1; // 0x1
+        BITS_16 = 2; // 0x2
+    };
+    required Bits bits = 1;
+
+    enum OutputFormat {
+        OUTPUT_REAL       = 0; // 0x0
+        OUTPUT_COMPLEX_1X = 1; // 0x1
+        OUTPUT_COMPLEX_2X = 2; // 0x2
+    };
+    required OutputFormat format = 2;
+};
+
+message AdcBufferConfig {
+    enum Format {
+        COMPLEX = 0;
+        REAL    = 1;
+    };
+    required Format output_format = 1;
+
+    enum IqSelector {
+        IQ = 0;
+        QI = 1;
+    };
+    required IqSelector iq_swap_selector = 2;
+
+    enum Interleave {
+        INTERLEAVE_YES = 0;
+        INTERLEAVE_NO  = 1;
+    }
+    required Interleave channel_interleave_mode = 3;
+
+    required uint32 chirp_threshold = 4;
+};
+
+message ChirpConfig {
+    required uint32 index_start     = 1;
+    required uint32 index_stop      = 2;
+    required double start_frequency = 3; // GHz
+    required double ramp_slope      = 4; // MHz / Microseconds
+    required double idle_time       = 5; // Microseconds
+    required double adc_start_time  = 6; // Microseconds
+    required uint32 tx_enable       = 7;
+    // Units of 5.625 degrees.  It should be a repeated field identical in
+    // length to the popcount of the `tx_enable` field.
+    repeated uint32 phase_angle     = 8;
+};
+
+message ProfileConfig {
+    required double start_frequency           =  1; // GHz
+    required double idle_time                 =  2; // Microseconds
+    required double adc_start_time            =  3; // Microseconds
+    required double ramp_end_time             =  4; // Microseconds
+    required uint32 tx_out_power_backoff_code =  5; // ??
+    required double tx_phase_shifter          =  6; // Degrees
+    required double ramp_slope                =  7; // MHz / Microseconds
+    required uint32 tx_start_time             =  8; // Microseconds
+    required uint32 number_of_adc_samples     =  9; // Samples
+    required double digital_out_sample_rate   = 10; // 1000 Samples / Second
+
+    enum HighPassFreqCorner1 {
+        HPF1_175Khz = 0; // 0x00
+        HPF1_235Khz = 1; // 0x01
+        HPF1_350Khz = 2; // 0x02
+        HPF1_700Khz = 3; // 0x03
+    };
+    required HighPassFreqCorner1 hpf_corner_1 = 11;
+
+    enum HighPassFreqCorner2 {
+        HPF2_350Khz = 0; // 0x00
+        HPF2_700Khz = 1; // 0x01
+        HPF2_1_4Mhz = 2; // 0x02
+        HPF2_2_8Mhz = 3; // 0x03
+    };
+    required HighPassFreqCorner2 hpf_corner_2 = 12;
+
+    required uint32 rx_gain                   = 13;
+
+    // Valid values are:
+    // 30 (db)
+    // 34 (db)
+    // 26 (db)
+    optional uint32 rf_gain                   = 15 [default=30];
+
+    // --
+    repeated ChirpConfig chirps               = 14;
+};
+
+message FrameConfig {
+    required uint32 chirp_start_index   = 1;
+    required uint32 chirp_end_index     = 2;
+    required uint32 number_of_loops     = 3;
+    required uint32 number_of_frames    = 4;
+    required uint32 frame_periodicity   = 5;  // milliseconds
+    required uint32 frame_trigger_delay = 6;  // microseconds
+
+    enum TriggerMode {
+        TRIGGER_SOFTWARE = 1; // 0x0001
+        TRIGGER_HARDWARE = 2; // 0x0002
+    };
+    required TriggerMode trigger_mode   = 7;
+};
+
+message LowPowerConfig {
+    enum ChannelMode {
+        ANALOG_COMPLEX_CHAIN = 0;
+        ANALOG_REAL_CHAIN    = 1;
+    };
+    required ChannelMode analog_channel_config = 1;
+
+    enum AdcMode {
+        REGULAR_ADC_MODE   = 0;
+        LOW_POWER_ADC_MODE = 1;
+    };
+    required AdcMode adc_mode = 2;
+};
+
+
+message RadarProfile {
+    // {
+    // zendar meta data attributes
+    required string name = 1;
+    // }
+
+    // {
+    // Parameters which directly map to the RadarStudio structures.  All fields
+    // are technically required, though they are set as optional for
+    // future-proofing.
+    optional DfeOutputMode   dfe_output =  5;
+    optional ChannelConfig   channel    =  6;
+    optional AdcConfig       adc        =  7;
+    optional AdcBufferConfig adc_buffer =  8;
+    repeated ProfileConfig   profiles   =  9;
+    optional FrameConfig     frame      = 10;
+    optional LowPowerConfig  power      = 11;
+    // }
+};
+
+// Enumeration of all of the TX's which could possibly be enabled.
+message TxPhaseFiringSpecification {
+    optional Complex TX0 = 1;
+    optional Complex TX1 = 2;
+    optional Complex TX2 = 3;
+    optional Complex TX3 = 4;
+    optional Complex TX4 = 5;
+    optional Complex TX5 = 6;
+};
+
+message SimplifiedChirpSpecification {
+    // Bit mask of the transmitter mode.
+    required TxMode tx_mode              = 1;
+
+    // Time in seconds of the adc start
+    required double adc_time_start       = 2;
+
+    // Time in seconds between any two adc samples.
+    required double adc_time_step        = 3;
+
+    // Start frequency in Hz of the chirp.
+    required double frequency_start      = 4;
+
+    // Ramp slope of chirp in Hz/Second
+    required double frequency_ramp_slope = 5;
+
+    // Entire duration of the chirp including any idle periods and active
+    // periods in seconds.
+    required double duration             = 6;
+
+    // All of the indices that this simplified chirp specification applies to
+    // within a SimplifiedRadarProfile.
+    repeated uint32 chirp_indices        = 7;
+
+    // Contains all of the complex phase angles for the fired numbers.
+    optional TxPhaseFiringSpecification tx_phases = 8;
+};
+
+message SimplifiedRadarProfile {
+    required uint32 profile_id                   = 1;
+    required uint32 adc_samples                  = 2;
+    required double frame_period                 = 3;
+    repeated SimplifiedChirpSpecification chirps = 4;
+};
+
+// -------------------------------------------------------------------------- //
+// DATA
+// -------------------------------------------------------------------------- //
+
+message IntrinsicRadar {
+    required RadarProfile           profile    = 1;
+    // beam_width is specified in degrees
+    optional double                 beam_width = 2 [default=70.0];
+    repeated TransmitAntennaConfig  transmit_antenna_config = 3;
+    repeated ReceiveAntennaConfig   receive_antenna_config  = 4;
+    repeated SimplifiedRadarProfile profile_simplified      = 5;
+    optional AntennaExtrinsicInfo   info                    = 6;
+};
+
+message IntrinsicRadarModule {
+    required IntrinsicRadar controller = 1;
+    repeated IntrinsicRadar peripheral = 2;
+};
+
+// -------------------------------------------------------------------------- //
+// ANTENNA CONFIGURATIONS
+// -------------------------------------------------------------------------- //
+
+message AntennaExtrinsicModel {
+    repeated TransmitAntennaConfig  transmit_antenna_config = 1;
+    repeated ReceiveAntennaConfig   receive_antenna_config  = 2;
+    // beam_width is specified in degrees
+    optional double                 beam_width              = 3 [default=70.0];
+
+    optional AntennaExtrinsicInfo   info                    = 4;
+};
+
+// UniformArraySpecification: logically a two-dimensional array of
+// virtual antennas, each being represented as a pair
+//
+//   (transmitter index, receiver index).
+//
+// The intended use is to identify a subset of virtual antennas that
+// form a uniform rectangular array.
+//
+// A uniform linear array can also be represented by setting either
+// of the two dimensions to unity.
+message UniformArraySpecification {
+  // One virtual antenna
+  message AntennaPair {
+    required uint32 tx = 1;
+    required uint32 rx = 2;
+  };
+
+  // One row of a uniform rectangular array
+  message AntennaPairList {
+    repeated AntennaPair pairs = 1;
+  };
+
+  // Each row must have the same length.
+  repeated AntennaPairList rows = 1;
+};
+
+message AntennaExtrinsicInfo {
+  // Human-readable mnemonic name for this array design.
+  optional string name = 1;
+
+  // List of all (maximal) uniform rectangular subsets.
+  repeated UniformArraySpecification uniform_rectangular_subsets = 2;
+};
+
+
+// -------------------------------------------------------------------------- //
+// CALIBRATION PARAMETERS
+// -------------------------------------------------------------------------- //
+//
+// Application of calibration parameters are constant in time, per-VX
+//
+// For data_in which is complex IQ time samples for a single VX:
+//
+// DC Offsets:
+// Accounts for any bias (unit-less) in the I and Q ADC sampling, typically
+// these values are very close to 0.
+// data_out = data_in - (dc_offset_I + 1j dc_offset_Q)
+//
+// IQ Imbalance:
+// Accounts for imbalance in gain (unit-less) and phase (radians) between I and
+// Q channels, typically gain is close to 1 and phase is close to 0. Gain is
+// relative to the Q channel.
+// Gain:
+//      data_out = (data_in.real / IQ_gain_ratio_linear) + (1j * data_in.imag)
+// Phase:
+//      data_out = (1 / cos(IQ_phase_angle)) *
+//                  [[cos(IQ_phase_angle), 0], [-sin(IQ_phase_angle), 1]] *
+//                  data_in
+//      Note: the first multiplication is scalar, the second multiplication is
+//            a matrix multiplication [2, 2] * [2, N] = [2, N]
+//
+// VX channel complex gain:
+// Account for the differences in gain (unit-less) and phase (radians) between
+// VXs.
+// data_out = (data_in / channel_gain_ratio_linear) *
+//              exp(-1j * channel_phase_angle)
+//
+// VX Time Offset:
+// Account for the board and component delay (seconds). The frequency offset
+// can be derived from the time offset and exists for historical reasons. To be
+// physical, the time and frequency offset should be negative.
+// frequency_offset = ramp_slope * time_offset, where ramp_slope (MHz /
+// microseconds) is a parameter in the chirp profile. The sample rate (kHz) and
+// number of samples are required, which come from the chirp profile parameters
+// digital_out_sample_rate and number_of_adc_samples.
+// time_samples = [-number_of_adc_samples/2, ..., number_of_adc_samples/2 - 1]
+//                  * digital_out_sample_rate * 1000
+// data_out = data_in *
+//              exp(1j * 2 * pi * ramp_slope * time_offset * time samples)
+// OR
+// data_out = data_in *
+//              exp(1j * 2 * pi * frequency_offset * time samples)
+message RadarReceiveAntennaIntrinsic {
+    required RxMode antenna = 1;
+    optional double dc_offset_I = 2 [default=0.0];
+    optional double dc_offset_Q = 3 [default=0.0];
+    optional double IQ_gain_ratio_linear = 4 [default=1.0];
+    optional double IQ_phase_angle = 5 [default=0.0];
+    optional double channel_gain_ratio_linear = 6 [default=1.0];
+    optional double channel_phase_angle = 7 [default=0.0];
+    optional double frequency_offset = 8 [default=0.0];
+    optional double time_offset = 10 [default=0.0];
+    optional TxMode tx_antenna = 9;
+}
+
+message RadarCalibrationConfig {
+    required string                       name = 1;
+    repeated RadarReceiveAntennaIntrinsic calibration_coefficients = 2;
+}
+
+// -------------------------------------------------------------------------- //
+// DATA
+// -------------------------------------------------------------------------- //
+// {
+message IQ {
+    // {
+    // These are populated by `zenacquire` and are by default available.
+    // However, they are wasting 50%.
+    repeated sfixed32 I  = 1 [packed=true];
+    repeated sfixed32 Q  = 2 [packed=true];
+    // }
+
+    // {
+    // When data is imported, the two 16 bit numbers are packed into this single
+    // unsigned number, such that I is in the lower 16 bits, Q is in the upper.
+    repeated fixed32  IQ = 3 [packed=true];
+    // }
+};
+
+message CQ0 {};
+
+message CQ1 {
+    optional uint32 primary_signal   = 1;
+    optional uint32 primary_image    = 2;
+    optional uint32 secondary_signal = 3;
+    optional uint32 secondary_image  = 4;
+};
+
+message CQ2 {
+    optional uint32 primary   = 1;
+    optional uint32 secondary = 2;
+};
+
+message ChirpQuality {
+    repeated CQ0 cq0 = 1;
+    repeated CQ1 cq1 = 2;
+    repeated CQ2 cq2 = 3;
+};
+
+message ChirpResponse {
+    required TimeRecord timestamp      = 1;
+    optional IQ         rx0            = 2;
+    optional IQ         rx1            = 3;
+    optional IQ         rx2            = 4;
+    optional IQ         rx3            = 5;
+
+    // A monotonically increasing index for the frame.
+    optional uint64     idx_frame      = 6;
+
+    // The index of the loop for this chirp.
+    optional uint64     idx_frame_loop = 7;
+
+    // The index into the ProfileConfig::chirps for this specific
+    // chirp response.
+    // **CAUTION**
+    // This is not the index of the chirp in the frame, even though
+    // it sure sounds like it.
+    optional int32      chirp_index    = 8 [default=0];
+
+    // Optional field containing chirp quality metadata.
+    optional ChirpQuality chirp_quality = 9;
+};
+// }
+
+// Placeholder for now until we know what this means
+//message ChirpQuality {
+//    repeated int32          payload = 1 [packed=true];
+//};
+
+message CSIPacket {
+    required ChirpResponse  chirp   = 1;
+    optional ChirpQuality   cq      = 2;
+    optional uint32         crc     = 3;
+};
+
+message TransmitAntennaConfig {
+    required TxMode     id   = 1;
+    required Vec3d      T    = 2;
+};
+
+message ReceiveAntennaConfig {
+    required RxMode     id  = 1;
+    required Vec3d      T   = 2;
+};
