@@ -57,6 +57,8 @@ class RadarImage(RadarData):
 
         image_pb.timestamp = timestamp
         image_pb.frame_id = frame_id
+        # Setting the type to REAL_32U
+        image_pb.cartesian.data.type = 5
         array_to_vec3d_pb(image_pb.position,
                           self.extrinsic.position)
 
