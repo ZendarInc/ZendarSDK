@@ -38,7 +38,12 @@ RenderData = namedtuple('RenderData', ['image',
                                        'lidar'])
 
 # This script was tested with Qt5Agg to provide all the functionnalities
-matplotlib.use('Qt5Agg')
+# or headless
+import os
+if 'DISPLAY' not in os.environ or matplotlib.get_backend() == 'agg':
+    matplotlib.use('agg')
+else:
+    matplotlib.use('Qt5Agg')
 
 def main():
     parser = argparse.ArgumentParser()
