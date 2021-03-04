@@ -12,6 +12,103 @@ from data_pb2 import Image
 Extrinsic = namedtuple('Extrinsic', ['position', 'attitude'])
 
 
+class ImageModelCartesian(RadarData):
+    def __init__(self, timestamp, dim_u, dim_v, origin, du, dv,
+                 u_track_aligned=True, aperture_center=None,
+                 track_dir=None, up_dir=None, fc=None):
+
+        """
+        dim_u, dim_v: image width and height in pixels.
+        origin: image's coordinate origin (top left) in space.
+        du: width of a pixel (vector).
+        dv: height of a pixel (vector).
+        u_track_aligned: whether the u dimension is more closely
+        aligned with the track (as is typical in side-facing) or
+        cross-track (as is more typical with front-facing)
+        track_vector: a vector pointing along the track
+        """
+        self.timestamp = timestamp
+
+        self.origin = origin
+        self.dim_u = dim_u
+        self.dim_v = dim_v
+        self.du = du
+        self.dv = dv
+        self.u_track_aligned = u_track_aligned
+        
+        self.u_res = np.linalg.norm(du)
+        self.u_dir = du / self.u_res
+        self.v_res = np.linalg.norm(dv)
+        self.v_dir = dv / self.v_res
+        
+        self.aperture_center = aperture_center
+        if track_dir is not None:
+            self.track_dir = track_dir / np.linalg.norm(track_dir)
+        else:
+            self.track_dir = None
+        if up_dir is not None:
+            self.up_dir = up_dir / np.linalg.norm(up_dir)
+        else:
+            self.up_dir = None
+        
+        self.fc = fc
+
+    @classmethod
+    def from_proto(cls, image_model_pb):
+        timestamp = image_model_pb.timestamp_start.common
+        dim_u = image_model_pb.image_model.nu
+        dim_v = image_model_pb.image_model.nv
+        origin = np.array([image_model_pb.image_model.origin.x,
+                           image_model_pb.image_model.origin.y,
+                           image_model_pb.image_model.origin.z])
+        du = np.array([image_model_pb.image_model.dxyz_du.x,
+                       image_model_pb.image_model.dxyz_du.y,
+                       image_model_pb.image_model.dxyz_du.z])
+        dv = np.array([image_model_pb.image_model.dxyz_dv.x,
+                       image_model_pb.image_model.dxyz_dv.y,
+                       image_model_pb.image_model.dxyz_dv.z])
+
+        if image_model_pb.image_model.HasField('aperture_center'):
+            aperture_center = np.array([image_model_pb.image_model.aperture_center.x,
+                                        image_model_pb.image_model.aperture_center.y,
+                                        image_model_pb.image_model.aperture_center.z])
+
+        return cls(timestamp, dim_u, dim_v, origin, du, dv,
+                   aperture_center=aperture_center)
+
+    def global_to_local(self, ecef_point):
+        """
+        Project a point to the vehicle centric coordinates
+        """
+        w_dir = np.cross(self.u_dir, self.v_dir)
+        shift_vec = ecef_point - self.origin
+        return np.array([shift_vec.dot(self.u_dir),
+                         shift_vec.dot(self.v_dir),
+                         shift_vec.dot(w_dir)])
+
+    def global_to_image(self, ecef_point):
+        """
+        project a point in global (ECEF) to SAR image
+        """
+        shift_vec = ecef_point - self.origin
+        u_projected = shift_vec.dot(self.u_dir) / self.u_res
+        v_projected = shift_vec.dot(self.v_dir) / self.v_res
+
+        image_point = (u_projected, v_projected)
+
+        return image_point
+
+    def image_to_global(self, image_point):
+        """
+        project a point in SAR image to global (ECEF)
+        """
+        u = image_point[1]
+        v = image_point[0]
+        ecef_point = u * self.du + v * self.dv + self.origin
+
+        return ecef_point
+
+
 class RadarImage(RadarData):
     """
     This class is a Python representation of the protobuf Image object for

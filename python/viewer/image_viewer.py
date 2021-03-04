@@ -12,9 +12,10 @@ from matplotlib.colors import Normalize
 
 from multiprocessing import Process
 
-import data_pb2, tracker_pb2, lidar_pb2
+import data_pb2, tracker_pb2, lidar_pb2, radar_image_pb2
 from radar_image import (
     RadarImage,
+    ImageModelCartesian,
 )
 from radar_data_streamer import (
     ProtoStreamReader,
@@ -31,11 +32,13 @@ IOPath = namedtuple('IOPath', ['image_pbs_path',
                                'pc_pbs_path',
                                'lidar_pbs_path',
                                'video_output_path',
+                               'image_model_input_path', 
                                'image_model_output_path'])
 
 RenderData = namedtuple('RenderData', ['image',
                                        'pc',
-                                       'lidar'])
+                                       'lidar',
+                                       'model'])
 
 # This script was tested with Qt5Agg to provide all the functionnalities
 # or headless
@@ -79,6 +82,9 @@ def main():
                         action='store_true')
     parser.add_argument('--color-by-elevation',
                         action='store_true')
+    parser.add_argument('-m', '--image_models',
+                        default=None,
+                        help='Image models to override SAR image model or if no SAR is used.')
 
     args = parser.parse_args()
 
@@ -90,7 +96,8 @@ def main():
         io_path = get_io_paths('', args.input_dir, args.output_dir,
                                no_sar=args.no_sar,
                                no_point_cloud=args.no_point_cloud,
-                               lidar=args.lidar)
+                               lidar=args.lidar,
+                               models=args.image_models)
         input_output_paths.append(io_path)
         args.radar_name.append('')
     else:
@@ -98,7 +105,8 @@ def main():
             io_path = get_io_paths(radar_name, args.input_dir, args.output_dir,
                                    no_sar=args.no_sar,
                                    no_point_cloud=args.no_point_cloud,
-                                   lidar=args.lidar)
+                                   lidar=args.lidar,
+                                   models=args.image_models)
             input_output_paths.append(io_path)
 
     # create individual outputs
@@ -162,7 +170,8 @@ def visualize_single_radar(io_path, radar_name, output_dir=None, frame_rate=10,
     with ExitStack() as stack:
         for render_data in sync_streams(io_path.image_pbs_path,
                                           io_path.pc_pbs_path,
-                                          io_path.lidar_pbs_path):
+                                          io_path.lidar_pbs_path,
+                                          io_path.image_model_input_path):
             if render_data.image is None \
                and render_data.pc is None \
                and render_data.lidar is None:
@@ -227,13 +236,14 @@ def visualize_single_radar(io_path, radar_name, output_dir=None, frame_rate=10,
             fig.canvas.flush_events()
 
 
-def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
+def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path, image_model_input_path):
     """
     this function synchronizes the image, point cloud, and lidar streams
     """
     radar_image_streamer = None
     point_cloud_streamer = None
     lidar_cloud_streamer = None
+    image_models_streamer = None
 
     with ExitStack() as stack:
         if image_pbs_path is not None:
@@ -253,6 +263,13 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
                 ProtoStreamReader(lidar_pbs_path,
                                   lidar_pb2.LidarPointsFrame,
                                   LidarPointsFrame))
+
+        if image_model_input_path is not None:
+            image_models_streamer = stack.enter_context(
+                ProtoStreamReader(image_model_input_path,
+                                  radar_image_pb2.FrameRecord,
+                                  ImageModelCartesian, header_size=0))
+
         streams = {}
         data = {}
         if radar_image_streamer is not None:
@@ -261,6 +278,8 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
             streams['pc'] = iter(point_cloud_streamer)
         if lidar_cloud_streamer is not None:
             streams['lidar'] = iter(lidar_cloud_streamer)
+        if image_models_streamer is not None:
+            streams['models'] = iter(image_models_streamer)
 
         for key in streams:
             data[key] = next(streams[key])
@@ -289,14 +308,15 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
                 try:
                     data[key] = next(streams[key])
                 except StopIteration:
-                    yield RenderData(image=None, pc=None, lidar=None)
+                    yield RenderData(image=None, pc=None, lidar=None, model=None)
                 if data[key].timestamp > max_timestamp:
                     max_timestamp = data[key].timestamp
 
             image = data['radar'] if 'radar' in streams else None
             pc    = data['pc']    if 'pc'    in streams else None
             lidar = data['lidar'] if 'lidar' in streams else None
-            yield RenderData(image=image, pc=pc, lidar=lidar)
+            model = data['models'] if 'models' in streams else None
+            yield RenderData(image=image, pc=pc, lidar=lidar, model=model)
 
             # Catch up to the most ahead timestamp with the other streams
             for key in streams:
@@ -304,11 +324,12 @@ def sync_streams(image_pbs_path, pc_pbs_path, lidar_pbs_path):
                     try:
                         data[key] = next(streams[key])
                     except StopIteration:
-                        yield RenderData(image=None, pc=None, lidar=None)
+                        yield RenderData(image=None, pc=None, lidar=None, model=None)
                     image = data['radar'] if 'radar' in streams else None
                     pc    = data['pc']    if 'pc'    in streams else None
                     lidar = data['lidar'] if 'lidar' in streams else None
-                    yield RenderData(image=image, pc=pc, lidar=lidar)
+                    model = data['models'] if 'models' in streams else None
+                    yield RenderData(image=image, pc=pc, lidar=lidar, model=model)
 
 
 MAX_DOPPLER = 20
@@ -330,13 +351,16 @@ def to_rgb_image(render_data, color_by_elevation=False):
     radar_image_display = RadarImageStreamDisplay()
 
     # Default image region
-    xmin = 0
-    xmax = 60
-    ymin = -30
-    ymax = 30
-    im_res = 0.1
-    imsize_y = int((ymax - ymin) / im_res)
-    imsize_x = int((xmax - xmin) / im_res)
+    #xmin = 0
+    #xmax = 60
+    #ymin = -30
+    #ymax = 30
+    #im_res = 0.1
+    #imsize_y = int((ymax - ymin) / im_res)
+    #imsize_x = int((xmax - xmin) / im_res)
+
+    imsize_x = render_data.model.dim_u
+    imsize_y = render_data.model.dim_v
 
     if render_data.image is not None:
         im_rgb = radar_image_display(render_data.image.image)
@@ -354,8 +378,9 @@ def to_rgb_image(render_data, color_by_elevation=False):
                 draw_tracker_point(im_rgb, x, y, color)
         else:
             for pt in render_data.pc.point_cloud:
-                im_pt_x = (pt.local_xyz[1] - xmin) / im_res
-                im_pt_y = (pt.local_xyz[0] - ymin) / im_res
+                im_pt_x, im_pt_y = render_data.model.global_to_image(pt.ecef)
+                #im_pt_x = (pt.local_xyz[1] - xmin) / im_res
+                #im_pt_y = (pt.local_xyz[0] - ymin) / im_res
                 if color_by_elevation:
                     color = cmap_elevation.to_rgba(pt.local_xyz[2])
                 else:
@@ -370,8 +395,9 @@ def to_rgb_image(render_data, color_by_elevation=False):
                 draw_lidar_point(im_rgb, x, y)
         else:
             for pt in render_data.lidar.point_cloud:
-                im_pt_x = (pt.position_local[1] - xmin) / im_res
-                im_pt_y = (-pt.position_local[0] - ymin) / im_res
+                im_pt_x, im_pt_y = render_data.model.global_to_image(pt.position_global)
+                #im_pt_x = (pt.position_local[1] - xmin) / im_res
+                #im_pt_y = (-pt.position_local[0] - ymin) / im_res
                 draw_lidar_point(im_rgb, im_pt_x, im_pt_y)
 
     return im_rgb
@@ -404,12 +430,16 @@ def draw_lidar_point(im, x, y):
                thickness=-1)
 
 def get_io_paths(radar_name, input_dir, output_dir,
-                 no_sar=False, no_point_cloud=False, lidar=False):
+                 no_sar=False, no_point_cloud=False, lidar=False, models=None):
     image_pbs_path = None
     pc_pbs_path = None
     lidar_pbs_path = None
     video_output_path = None
+    image_model_input_path = None
     image_model_output_path = None
+
+    if models is not None:
+        image_model_input_path = os.path.abspath(models)
 
     if no_sar:
         print("radar image display is turned off")
@@ -444,6 +474,7 @@ def get_io_paths(radar_name, input_dir, output_dir,
         pc_pbs_path=pc_pbs_path,
         lidar_pbs_path=lidar_pbs_path,
         video_output_path=video_output_path,
+        image_model_input_path=image_model_input_path,
         image_model_output_path=image_model_output_path)
 
     return io_path
