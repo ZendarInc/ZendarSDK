@@ -12,26 +12,14 @@ protobuf-compiler
 
 Python packages:
 ```
-numpy
-matplotlib
-gzip
-os
-struct
-protobuf
-argparse
+pip3 install -r requirements.txt
 ```
 
 ## Setup
 
 To use these tools, perform the following steps:
 ```
-cd ./protocol
-protoc primitive.proto --python_out .
-protoc radar.proto --python_out .
-protoc acquisition.proto --python_out .
-cd ../
-export PYTHONPATH=${PYTHONPATH}:<path-to-ZendarSDK>/raw_radar_reader/protocol
-export PYTHONPATH=${PYTHONPATH}:<path-to-ZendarSDK>/raw_radar_reader/python
+source environment.sh
 ```
 
 ## Example Script
