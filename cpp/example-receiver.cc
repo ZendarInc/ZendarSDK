@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
       printf("Failed to receive tracker_state\n");
     } else {
       printf("Received tracker_state, timestamp: %f \n",
-             tracker_state.timestamp().common());
+             tracker_state.meta().timestamp());
     }
     error = rcv.NextTracklog(position);
     if (error) {
