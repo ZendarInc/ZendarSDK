@@ -2,6 +2,10 @@
 
 This directory consists of a list of Python tools that is used to interact
 with the Zendar data
+- `viewer` contains tools that can visualize processed SAR images and point
+  clouds from the Zendar radar system
+- `raw_radar_reader` contains tools for interacting with raw radar data
+  (ADC samples) directly
 
 ## Install necessary dependencies
 
@@ -18,12 +22,23 @@ with the Zendar data
 The protobufs are compiled and installed as part of the C++ installation
 process, so please run that if you have not already.
 
-## Setup Python environment
+## Setup
 
-Every time when a new shell is started, run
+### One-time setup
 
-    $> pushd ..
-    $> source environment.sh
-    $> popd
+These tools depend on the debian files contained in `ZendarSDK/cpp`. First you must
+build the portion of those dependencies that are needed by this tool. The first time
+you do this, you may need to install the required C++ dependencies specified in
+`ZendarSDK/cpp/README`.
+```
+pushd ../cpp
+sudo make protocol
+popd
+```
 
-to setup the Python environment
+### Every time you open a new terminal
+
+When you open a new terminal, set your environment variables using this script:
+```
+source ../environment.sh
+```
