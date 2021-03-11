@@ -13,7 +13,7 @@ these tools.
 ## Example Script
 
 ```
-python3 ./python/example.py --root <path-to-data> --calibration <path-to-cal-file>
+python3 ./example.py --root <path-to-data> --calibration <path-to-cal-file>
 ```
 
 This example script loads the requested data, plots a range-Doppler spectrum, and

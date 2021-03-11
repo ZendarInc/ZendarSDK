@@ -40,5 +40,5 @@ popd
 
 When you open a new terminal, set your environment variables using this script:
 ```
-source ../environment.sh
+source environment.sh
 ```
