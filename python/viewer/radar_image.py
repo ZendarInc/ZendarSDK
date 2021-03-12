@@ -26,12 +26,12 @@ class RadarImage(RadarData):
 
     @classmethod
     def from_proto(cls, image_pb):
-        timestamp = image_pb.timestamp
-        frame_id = image_pb.frame_id
+        timestamp = image_pb.meta.timestamp
+        frame_id = image_pb.meta.frame_id
 
         extrinsic = Extrinsic(
-            position=vec3d_to_array(image_pb.position),
-            attitude=quat_to_array(image_pb.attitude))
+            position=vec3d_to_array(image_pb.meta.position),
+            attitude=quat_to_array(image_pb.meta.attitude))
 
         image_model = ImageModel(
             origin=vec3d_to_array(image_pb.cartesian.model.origin),
@@ -55,14 +55,14 @@ class RadarImage(RadarData):
     def to_proto(self, timestamp, frame_id):
         image_pb = Image()
 
-        image_pb.timestamp = timestamp
-        image_pb.frame_id = frame_id
+        image_pb.meta.timestamp = timestamp
+        image_pb.meta.frame_id = frame_id
         # Setting the type to REAL_32U
         image_pb.cartesian.data.type = 5
-        array_to_vec3d_pb(image_pb.position,
+        array_to_vec3d_pb(image_pb.meta.position,
                           self.extrinsic.position)
 
-        array_to_quat_pb(image_pb.attitude,
+        array_to_quat_pb(image_pb.meta.attitude,
                          self.extrinsic.attitude)
 
         array_to_vec3d_pb(image_pb.cartesian.model.origin,

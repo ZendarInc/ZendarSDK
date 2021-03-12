@@ -43,8 +43,8 @@ class RadarPointCloud(RadarData):
 
     @classmethod
     def from_proto(cls, tracker_state_pb):
-        time_record = tracker_state_pb.timestamp
-        frame_id = tracker_state_pb.frame_id
+        timestamp = tracker_state_pb.meta.timestamp
+        frame_id = tracker_state_pb.meta.frame_id
 
         point_cloud = []
         for pt in tracker_state_pb.detection:
@@ -52,8 +52,7 @@ class RadarPointCloud(RadarData):
             if radar_point is not None:
                 point_cloud.append(radar_point)
 
-        radar_point_cloud = cls(time_record.common, frame_id,
-                                point_cloud)
+        radar_point_cloud = cls(timestamp, frame_id, point_cloud)
 
         return radar_point_cloud
 
