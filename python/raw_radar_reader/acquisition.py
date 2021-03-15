@@ -56,26 +56,6 @@ class SensorPbTxt(SensorPath):
         assert(False) << "Not supported"
 
 
-class SensorPbBin(SensorPath):
-    @property
-    def path(self):
-        return '{}.pb'.format(self.root)
-
-    def _read(self):
-        if exists(self.path):
-            model = read_proto_binary(self.path, self.type())
-        else:
-            path = replace_suffix(self.path, ".pt")
-            assert(exists(path)), path
-
-            model = read_proto_text(path, self.type())
-
-        return model
-
-    def write(self, data):
-        assert(False) << "Not supported"
-
-
 class SensorStream(SensorPath):
     def __init__(self, *args, **kwargs):
         SensorPath.__init__(self, *args, **kwargs)
@@ -170,13 +150,13 @@ class SensorPathModel(object):
 
     @property
     def extrinsic(self):
-        return SensorPbBin(
+        return SensorPbTxt(
                 type=self.type_extrinsic,
                 path=join(self.root, 'extrinsic'))
 
     @property
     def intrinsic(self):
-        return SensorPbBin(
+        return SensorPbTxt(
                 type=self.type_intrinsic,
                 path=join(self.root, 'intrinsic'))
 
