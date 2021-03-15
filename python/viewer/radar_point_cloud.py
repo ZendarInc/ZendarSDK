@@ -1,6 +1,11 @@
 import numpy as np
-
-from util import vec3d_to_array
+from collections import namedtuple
+from zendar.imaging.pose import Pose
+from zendar.common.coordinates.transformation_utils import TransformationUtils
+from util import (
+    vec3d_to_array,
+    quat_to_array,
+)
 from radar_data_streamer import RadarData
 
 
@@ -18,7 +23,7 @@ class RadarPoint(object):
         self.rd_mean_snr = rd_mean_snr
 
     @classmethod
-    def from_proto(cls, point_pb):
+    def from_proto(cls, point_pb, pose):
         xyz = polar2cartesian(point_pb.range,
                               point_pb.azimuth,
                               point_pb.elevation)
@@ -26,6 +31,7 @@ class RadarPoint(object):
             return None
 
         ecef = vec3d_to_array(point_pb.position)
+        xyz = TransformationUtils.quaternion_reverse_rotate_3d_vector(pose.R, ecef-pose.T)
         if np.isnan(ecef[0]) or np.isnan(ecef[1]) or np.isnan(ecef[2]):
             return None
 
@@ -36,9 +42,10 @@ class RadarPoint(object):
 
 
 class RadarPointCloud(RadarData):
-    def __init__(self, timestamp, frame_id, point_cloud):
+    def __init__(self, timestamp, frame_id, pose, point_cloud):
         self.timestamp = timestamp
         self.frame_id = frame_id
+        self.pose = pose
         self.point_cloud = point_cloud
 
     @classmethod
@@ -46,13 +53,16 @@ class RadarPointCloud(RadarData):
         timestamp = tracker_state_pb.meta.timestamp
         frame_id = tracker_state_pb.meta.frame_id
 
+        pose = Pose(quat_to_array(tracker_state_pb.meta.attitude),
+                    vec3d_to_array(tracker_state_pb.meta.position))
+
         point_cloud = []
         for pt in tracker_state_pb.detection:
-            radar_point = RadarPoint.from_proto(pt)
+            radar_point = RadarPoint.from_proto(pt, pose)
             if radar_point is not None:
                 point_cloud.append(radar_point)
 
-        radar_point_cloud = cls(timestamp, frame_id, point_cloud)
+        radar_point_cloud = cls(timestamp, frame_id, pose, point_cloud)
 
         return radar_point_cloud
 

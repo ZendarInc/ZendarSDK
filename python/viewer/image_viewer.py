@@ -12,6 +12,8 @@ from matplotlib.colors import Normalize
 
 from multiprocessing import Process
 
+from zendar.common.command import BBoxType
+
 import data_pb2, tracker_pb2, lidar_pb2
 from radar_image import (
     RadarImage,
@@ -79,6 +81,13 @@ def main():
                         action='store_true')
     parser.add_argument('--color-by-elevation',
                         action='store_true')
+    parser.add_argument('--bbox',
+                        type=BBoxType(),
+                        metavar='U0,V0,U1,V1',
+                        help=("image bounding box. \"U\" is the vehicle's "
+                              "forward axis, and \"V\" is the vehicle's left "
+                              "axis. Required when not plotting SAR, otherwise"
+                              " ignored and SAR image model is used."))
 
     args = parser.parse_args()
 
@@ -107,7 +116,7 @@ def main():
         p = Process(target=visualize_single_radar,
                     args=(io_path, radar_name, args.output_dir, args.frame_rate,
                           args.quality_factor, args.show_timestamp,
-                          args.color_by_elevation))
+                          args.color_by_elevation, args.bbox))
         p.start()
         process_list.append(p)
     for p in process_list:
@@ -151,7 +160,7 @@ def main():
 
 def visualize_single_radar(io_path, radar_name, output_dir=None, frame_rate=10,
                            quality_factor=25, show_timestamp=False,
-                           color_by_elevation=False):
+                           color_by_elevation=False, bbox=None):
     fig = plt.figure()
     fig.show()
     ax = None
@@ -169,7 +178,7 @@ def visualize_single_radar(io_path, radar_name, output_dir=None, frame_rate=10,
                 break
 
             # create rgb image from point cloud / SAR
-            im_rgb = to_rgb_image(render_data, color_by_elevation)
+            im_rgb = to_rgb_image(render_data, color_by_elevation, bbox)
 
             # flip image because image (0,0) is at top left corner
             # while radar image (0,0) is at bottom left corner
@@ -322,7 +331,7 @@ cmap_elevation = ScalarMappable(norm=Normalize(vmin=-MAX_ELEVATION,
                                 cmap=plt.get_cmap('PuOr_r'))
 
 
-def to_rgb_image(render_data, color_by_elevation=False):
+def to_rgb_image(render_data, color_by_elevation=False, bbox=None):
     """
     convert raw sar image and / or point cloud into 8-bit RGB for display
     """
@@ -337,6 +346,15 @@ def to_rgb_image(render_data, color_by_elevation=False):
     im_res = 0.1
     imsize_y = int((ymax - ymin) / im_res)
     imsize_x = int((xmax - xmin) / im_res)
+
+    if bbox is not None:
+        ymin = bbox[0]
+        xmin = bbox[1]
+        ymax = bbox[2]
+        xmax = bbox[3]
+        im_res = 0.1 #HARDCODE
+        imsize_y = int((ymax - ymin) / im_res)
+        imsize_x = int((xmax - xmin) / im_res)
 
     if render_data.image is not None:
         im_rgb = radar_image_display(render_data.image.image)
