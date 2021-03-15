@@ -9,8 +9,6 @@ from primitive_pb2 import (
         Extrinsic,
 )
 from radar_pb2 import (
-#        IntrinsicPose,
-#        PoseRecord,
         IntrinsicRadar,
         ChirpResponse,
         )
@@ -125,21 +123,6 @@ class SensorStream(SensorPath):
             self.stream = None
 
 
-class SensorStreamContextManaged(object):
-    """
-    This class is intended to be used with the context manager
-    to properly close out the file when exit
-    """
-    def __init__(self, sensor_stream):
-        self.sensor_stream = sensor_stream
-
-    def __enter__(self):
-        return self.sensor_stream
-
-    def __exit__(self, type, value, traceback):
-        self.sensor_stream.close()
-
-
 class SensorPathModel(object):
     def __init__(self, root, extrinsic, intrinsic, serial, stream):
         self.root = root
@@ -176,43 +159,6 @@ class AcquisitionStreamModel(object):
         return SensorPbTxt(
                 type=Acquisition,
                 path=join(self.root, 'acquisition'))
-
-    @property
-    def tracklog(self):
-        return self.pose
-
-    @property
-    def pose(self):
-        if self.acquisition.exists:
-            serial = self.acquisition.read().pose.serial
-        else:
-            serial = ''
-
-        return SensorPathModel(
-                extrinsic=Extrinsic,
-                intrinsic=IntrinsicPose,
-                stream=PoseRecord,
-                serial=serial,
-                root=join(self.root, 'tracklog'))
-
-    @property
-    def radars(self):
-        return [r.name for r in self.acquisition.read().radars]
-
-    def radar(self, name):
-        serial = ''
-        if self.acquisition.exists:
-            for a in self.acquisition.read().radars:
-                if name == a.name:
-                    serial = a.serial
-                    break
-
-        return SensorPathModel(
-                extrinsic=Extrinsic,
-                intrinsic=IntrinsicRadar,
-                stream=ChirpResponse,
-                serial=serial,
-                root=join(self.root, 'radar', name))
 
     @property
     def radar_modules(self):
