@@ -24,20 +24,21 @@ class RadarPoint(object):
 
     @classmethod
     def from_proto(cls, point_pb, pose):
-        xyz = polar2cartesian(point_pb.range,
-                              point_pb.azimuth,
-                              point_pb.elevation)
-        if xyz is None:
+        radar_xyz = polar2cartesian(point_pb.range,
+                                    point_pb.azimuth,
+                                    point_pb.elevation)
+        if radar_xyz is None:
             return None
 
         ecef = vec3d_to_array(point_pb.position)
-        xyz = TransformationUtils.quaternion_reverse_rotate_3d_vector(pose.R, ecef-pose.T)
+        vehicle_xyz = TransformationUtils.quaternion_reverse_rotate_3d_vector(pose.R, ecef-pose.T)
         if np.isnan(ecef[0]) or np.isnan(ecef[1]) or np.isnan(ecef[2]):
             return None
 
-        point = cls(xyz, ecef, point_pb.range_velocity, point_pb.magnitude,
-                    point_pb.azimuth_variance, point_pb.elevation_variance,
-                    point_pb.doa_snr, point_pb.rd_mean_snr)
+        point = cls(vehicle_xyz, ecef, point_pb.range_velocity,
+                    point_pb.magnitude, point_pb.azimuth_variance,
+                    point_pb.elevation_variance, point_pb.doa_snr,
+                    point_pb.rd_mean_snr)
         return point
 
 

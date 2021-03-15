@@ -88,8 +88,15 @@ def main():
                               "forward axis, and \"V\" is the vehicle's left "
                               "axis. Required when not plotting SAR, otherwise"
                               " ignored and SAR image model is used."))
+    parser.add_argument('--res',
+                        type=float,
+                        default=0.1,
+                        help="Image resolution in meters when using --bbox")
 
     args = parser.parse_args()
+
+    if args.no_sar:
+        assert(args.bbox is not None), "bbox requied when not using SAR"
 
     input_output_paths = []
     if (not args.no_sar) or (not args.no_point_cloud):
@@ -116,7 +123,7 @@ def main():
         p = Process(target=visualize_single_radar,
                     args=(io_path, radar_name, args.output_dir, args.frame_rate,
                           args.quality_factor, args.show_timestamp,
-                          args.color_by_elevation, args.bbox))
+                          args.color_by_elevation, args.bbox, args.res))
         p.start()
         process_list.append(p)
     for p in process_list:
@@ -160,7 +167,7 @@ def main():
 
 def visualize_single_radar(io_path, radar_name, output_dir=None, frame_rate=10,
                            quality_factor=25, show_timestamp=False,
-                           color_by_elevation=False, bbox=None):
+                           color_by_elevation=False, bbox=None, res=None):
     fig = plt.figure()
     fig.show()
     ax = None
@@ -178,7 +185,7 @@ def visualize_single_radar(io_path, radar_name, output_dir=None, frame_rate=10,
                 break
 
             # create rgb image from point cloud / SAR
-            im_rgb = to_rgb_image(render_data, color_by_elevation, bbox)
+            im_rgb = to_rgb_image(render_data, color_by_elevation, bbox, res)
 
             # flip image because image (0,0) is at top left corner
             # while radar image (0,0) is at bottom left corner
@@ -331,28 +338,19 @@ cmap_elevation = ScalarMappable(norm=Normalize(vmin=-MAX_ELEVATION,
                                 cmap=plt.get_cmap('PuOr_r'))
 
 
-def to_rgb_image(render_data, color_by_elevation=False, bbox=None):
+def to_rgb_image(render_data, color_by_elevation=False, bbox=None, res=None):
     """
     convert raw sar image and / or point cloud into 8-bit RGB for display
     """
     im_rgb = None
     radar_image_display = RadarImageStreamDisplay()
 
-    # Default image region
-    xmin = 0
-    xmax = 60
-    ymin = -30
-    ymax = 30
-    im_res = 0.1
-    imsize_y = int((ymax - ymin) / im_res)
-    imsize_x = int((xmax - xmin) / im_res)
-
     if bbox is not None:
-        ymin = bbox[0]
-        xmin = bbox[1]
-        ymax = bbox[2]
-        xmax = bbox[3]
-        im_res = 0.1 #HARDCODE
+        xmin = bbox[0]
+        ymin = bbox[1]
+        xmax = bbox[2]
+        ymax = bbox[3]
+        im_res = res
         imsize_y = int((ymax - ymin) / im_res)
         imsize_x = int((xmax - xmin) / im_res)
 
@@ -372,8 +370,8 @@ def to_rgb_image(render_data, color_by_elevation=False, bbox=None):
                 draw_tracker_point(im_rgb, x, y, color)
         else:
             for pt in render_data.pc.point_cloud:
-                im_pt_x = (pt.local_xyz[1] - xmin) / im_res
-                im_pt_y = (pt.local_xyz[0] - ymin) / im_res
+                im_pt_x = (pt.local_xyz[0] - xmin) / im_res
+                im_pt_y = (pt.local_xyz[1] - ymin) / im_res
                 if color_by_elevation:
                     color = cmap_elevation.to_rgba(pt.local_xyz[2])
                 else:
