@@ -417,23 +417,23 @@ def get_io_paths(radar_name, input_dir, output_dir,
         image_pbs_path = join(input_dir, radar_name + "_images.pbs")
 
         if not exists(image_pbs_path):
-            image_pbs_path = None
             print("radar image at [%s] is not found" % image_pbs_path)
+            image_pbs_path = None
 
     if no_point_cloud:
         print("radar point cloud display is turned off")
     else:
         pc_pbs_path = join(input_dir, radar_name + "_points.pbs")
         if not exists(pc_pbs_path):
-            pc_pbs_path = None
             print("radar point cloud at [%s] is not found" % pc_pbs_path)
+            pc_pbs_path = None
 
     if not lidar:
         print("lidar display is turned off")
     else:
         lidar_pbs_path = join(input_dir, "lidar.pbs")
         assert exists(lidar_pbs_path), \
-            "lidar point cloud at [%s] is not found" % pc_pbs_path
+            "lidar point cloud at [%s] is not found" % lidar_pbs_path
 
     if output_dir is not None:
         video_output_path = join(output_dir, radar_name + ".mp4")
