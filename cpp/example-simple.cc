@@ -2,7 +2,7 @@
 #include "data.pb.h"
 
 int main() {
-  zendar::ZendarReceiver rcv("tcp://127.0.0.1:6342");
+  zendar::ZendarReceiver rcv("tcp://127.0.0.1");
   rcv.SubscribeImages(100);
   printf("Successful Initialization\n");
   zen_proto::data::Image image;

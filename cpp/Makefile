@@ -27,7 +27,7 @@ protocol: debian
 	${CXX} -fPIC ${ZENDAR_PROTO_PATH}/*.pb.cc -shared -lprotobuf -o ${ZENDAR_INSTALL_PATH}/libzenproto.so
 	cp ${ZENDAR_PROTO_PATH}/*.pb.h ${ZENDAR_INSTALL_PATH}
 
-example: example-simple example-receiver
+example: example-simple example-receiver example-control
 
 example-simple: example-simple.cc
 	${CXX} $< -I${ZENDAR_INSTALL_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
@@ -35,6 +35,10 @@ example-simple: example-simple.cc
 example-receiver: example-receiver.cc
 	${CXX} $< -I${ZENDAR_INSTALL_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
 
+example-control: example-control.cc
+	${CXX} $< -I${ZENDAR_INSTALL_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
+
 clean:
 	rm -f example-simple
 	rm -f example-receiver
+	rm -f example-control

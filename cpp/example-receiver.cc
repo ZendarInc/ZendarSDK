@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
     if (error) {
       printf("Failed to receive image\n");
     } else {
-      printf("Received image, timestamp: %f \n", image.timestamp());
+      printf("Received image, timestamp: %f \n", image.meta().timestamp());
     }
     error = rcv.NextTracker(tracker_state);
     if (error) {
