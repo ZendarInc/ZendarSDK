@@ -1,4 +1,5 @@
 
+
 # Zendar SDK
 
 
@@ -103,7 +104,57 @@ ZendarReceiver(std::string URI)
 ```
 
 
-The constructor takes a URI as a parameter. This should be the TCP subscribe port of the ZPU, which will default to port 6342. For example, for a ZPU with IP address` 10.0.0.1`, the URI will be` tcp://10.0.0.1:6342`
+The constructor takes a URI as a parameter. This consists of the protocol and the hostname. For example, for a ZPU with IP address` 10.0.0.1`, the URI will be` tcp://10.0.0.1`
+
+
+```
+ZendarError Connect();
+```
+
+
+Connects to the ZPU command port. Do this before sending any commands to the ZPU. Will return `ZENDAR_API_OK `if successful.
+
+
+```
+void Disconnect();
+```
+
+
+Destroys the connection to the ZPU command port.
+
+**ZPU Commands**
+
+
+```
+ZendarError Start(std::string name);
+```
+
+
+	Start running the ZPU using the configuration with the given name
+
+
+```
+ZendarError Stop();
+```
+
+
+Stop running the ZPU
+
+
+```
+ZendarError Status(zen_proto::control::Response& rep);
+```
+
+
+Gives the current status of the ZPU (possible values are defined in `reqrep.proto`)
+
+
+```
+ZendarError ListConfigurations(zen_proto::control::Response& rep);
+```
+
+
+`	`Lists all available configurations on the ZPU.
 
 
 ```
@@ -154,7 +205,15 @@ The operation was successful.
 
 
 ```
-ZENDAR_API_SUBSCRIBE_FAILURE = 1
+ZENDAR_API_CONNECT_FAILURE = 1
+```
+
+
+Failed to connect to the ZPU command port
+
+
+```
+ZENDAR_API_SUBSCRIBE_FAILURE = 2
 ```
 
 
@@ -162,7 +221,7 @@ Failed to subscribe to the data stream.
 
 
 ```
-ZENDAR_API_UNSUBSCRIBE_FAILURE = 2
+ZENDAR_API_UNSUBSCRIBE_FAILURE = 3
 ```
 
 
@@ -170,7 +229,7 @@ Failed to unsubscribe to the data stream.
 
 
 ```
-ZENDAR_API_TIMEOUT = 3
+ZENDAR_API_TIMEOUT = 4
 ```
 
 
@@ -178,7 +237,7 @@ Timeout error in receiving data from the socket.
 
 
 ```
-ZENDAR_API_QUEUE_ERROR = 4
+ZENDAR_API_QUEUE_ERROR = 5
 ```
 
 
@@ -186,7 +245,7 @@ Failed to read the next data element due to a failure to pop from the receive qu
 
 
 ```
-ZENDAR_API_NOT_SUBSCRIBED = 5,
+ZENDAR_API_NOT_SUBSCRIBED = 6
 ```
 
 
@@ -194,15 +253,23 @@ Failed to read the next data element because the receiver is not subscribed to t
 
 
 ```
-ZENDAR_API_PROTOBUF_ERROR = 6,
+ZENDAR_API_PROTOBUF_ERROR = 7
 ```
 
 
-Failed to unmarshal the protobuf received from the ZPU. Check to make sure the versions of the ZPU firmware and the API are compatible. 
+Failed to unmarshal the protobuf received from the ZPU. Check to make sure the versions of the ZPU firmware and the API are compatible.
 
 
 ```
-ZENDAR_API_OTHER_ERROR = 7
+ZENDAR_API_REQUEST_FAILURE = 8,
+```
+
+
+The ZPU failed to respond correctly to a command request sent to it.
+
+
+```
+ZENDAR_API_OTHER_ERROR = 100
 ```
 
 
