@@ -16,5 +16,5 @@ int main() {
     }
   }
   rcv.UnsubscribeImages();
-  return 1;
+  return 0;
 }

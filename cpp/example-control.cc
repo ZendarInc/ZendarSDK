@@ -36,5 +36,5 @@ int main(int argc, char* argv[]) {
     std::cout << "Failed to start";
   }
   rcv.Stop();
-  return 1;
+  return 0;
 }

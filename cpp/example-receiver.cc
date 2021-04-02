@@ -70,5 +70,5 @@ int main(int argc, char* argv[]) {
   if (error)
     printf("Failed to subscribe from logs");
 
-  return 1;
+  return 0;
 }
