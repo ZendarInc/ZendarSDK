@@ -95,6 +95,65 @@ Included in `data.pb.h`
 ```
 
 
+Included in` reqrep.pb.h`
+
+	Command types (protobufs):
+
+
+```
+    zen_proto::control::Request
+```
+
+
+
+    A union of:
+
+
+    	`zen_proto::control::ReqStartConfiguration`
+
+
+    	`zen_proto::control::ReqStatus`
+
+
+    	`zen_proto::control::ReqStop`
+
+
+    	`zen_proto::control::ReqListConfigurations`
+
+
+```
+    	(unused) zen_proto::control::ReqRunCommand
+    (unused) zen_proto::control::ReqSetFile
+
+    zen_proto::control::Response
+```
+
+
+
+    A union of:
+
+
+```
+    	zen_proto::control::RepStartConfiguration
+```
+
+
+
+    	`zen_proto::control::RepStatus`
+
+
+    	`zen_proto::control::RepStop`
+
+
+    	`zen_proto::control::RepListConfigurations`
+
+
+```
+    	(unused) zen_proto::control::RepRunCommand
+    (unused) zen_proto::control::RepSetFile
+```
+
+
 
 ## Methods of `ZendarReceiver`:
 
@@ -130,7 +189,8 @@ ZendarError Start(std::string name);
 ```
 
 
-	Start running the ZPU using the configuration with the given name
+
+    Start running the ZPU using the configuration with the given name. Note: Check that the current state of the ZPU is READY before starting the ZPU using the `Status `command.
 
 
 ```
@@ -138,7 +198,7 @@ ZendarError Stop();
 ```
 
 
-Stop running the ZPU
+Stop running the ZPU. Resets the state to READY from any state.
 
 
 ```
@@ -146,7 +206,8 @@ ZendarError Status(zen_proto::control::Response& rep);
 ```
 
 
-Gives the current status of the ZPU (possible values are defined in `reqrep.proto`)
+
+    Gives the current status of the ZPU. Possible values are defined in `reqrep.proto, `currently RUNNING, FAILED, READY, or NOTREADY.
 
 
 ```
