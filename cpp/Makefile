@@ -3,12 +3,13 @@ CXX = g++
 C = $(CXX)
 PROTOC = protoc
 
-ZENDAR_PROTO_PATH=/usr/lib/zendar
+ZENDAR_PROTO_PATH=/usr/include/zendar
+ZENDAR_HEADER_PATH=/usr/include/zendar
 ZENDAR_INSTALL_PATH=/usr/lib
 ZENDAR_CORE_DEB=$(wildcard zendar-core*.deb)
 ZENDAR_API_DEB=$(wildcard zendar-zenapi*.deb)
 
-LIBS = zendar_api glog zenproto protobuf shannon_core nng pthread
+LIBS = zendar_api glog shared_protobuf protobuf shannon_core nng pthread
 LINKFLAGS = $(addprefix -l, ${LIBS})
 LIBPATH=$(addprefix -L, ${ZENDAR_INSTALL_PATH})
 .PHONY: all install debian protocol example clean
@@ -30,13 +31,13 @@ protocol: debian
 example: example-simple example-receiver example-control
 
 example-simple: example-simple.cc
-	${CXX} $< -I${ZENDAR_INSTALL_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
+	${CXX} $< -I${ZENDAR_HEADER_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
 
 example-receiver: example-receiver.cc
-	${CXX} $< -I${ZENDAR_INSTALL_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
+	${CXX} $< -I${ZENDAR_HEADER_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
 
 example-control: example-control.cc
-	${CXX} $< -I${ZENDAR_INSTALL_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
+	${CXX} $< -I${ZENDAR_HEADER_PATH} ${LIBPATH} ${LINKFLAGS} -o $@
 
 clean:
 	rm -f example-simple
