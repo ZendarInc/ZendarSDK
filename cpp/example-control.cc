@@ -9,12 +9,12 @@ int main(int argc, char* argv[]) {
   }
   zendar::ZendarReceiver rcv(argv[1]);
   zendar::ZendarError error;
-  zen_proto::control::Response rep;
+  zpb::control::Response rep;
   rcv.Connect();
   // Reset the ZPU
   rcv.Stop();
   rcv.Status(rep);
-  if (rep.status().state() == zen_proto::control::RepStatus::READY) {
+  if (rep.status().state() == zpb::control::RepStatus::READY) {
     std::cout << "ZPU ready" << "\n";
   } else {
     std::cout << "ZPU not ready" << "\n";
@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
   // For this example, run the first configuration in the list
   std::string first_config(*rep.list_configurations().configurations().begin());
   rcv.Start(first_config);
-  if (rep.status().state() == zen_proto::control::RepStatus::RUNNING) {
+  if (rep.status().state() == zpb::control::RepStatus::RUNNING) {
     std::cout << "Successfully started";
   } else {
     std::cout << "Failed to start";

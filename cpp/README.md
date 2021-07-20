@@ -88,10 +88,10 @@ Included in `data.pb.h`
 
 
 ```
-    zen_proto::data::Image
-    zen::tracker::message::TrackerState
-    zen_proto::data::Position
-    zen_proto::data::LogRecord
+    zpb::data::Image
+    zpb::tracker::message::TrackerState
+    zpb::data::Position
+    zpb::data::LogRecord
 ```
 
 
@@ -101,7 +101,7 @@ Included in` reqrep.pb.h`
 
 
 ```
-    zen_proto::control::Request
+    zpb::control::Request
 ```
 
 
@@ -109,23 +109,23 @@ Included in` reqrep.pb.h`
     A union of:
 
 
-    	`zen_proto::control::ReqStartConfiguration`
+    	`zpb::control::ReqStartConfiguration`
 
 
-    	`zen_proto::control::ReqStatus`
+    	`zpb::control::ReqStatus`
 
 
-    	`zen_proto::control::ReqStop`
+    	`zpb::control::ReqStop`
 
 
-    	`zen_proto::control::ReqListConfigurations`
+    	`zpb::control::ReqListConfigurations`
 
 
 ```
-    	(unused) zen_proto::control::ReqRunCommand
-    (unused) zen_proto::control::ReqSetFile
+    (unused) zpb::control::ReqRunCommand
+    (unused) zpb::control::ReqSetFile
 
-    zen_proto::control::Response
+    zpb::control::Response
 ```
 
 
@@ -134,23 +134,23 @@ Included in` reqrep.pb.h`
 
 
 ```
-    	zen_proto::control::RepStartConfiguration
+    	zpb::control::RepStartConfiguration
 ```
 
 
 
-    	`zen_proto::control::RepStatus`
+    	`zpb::control::RepStatus`
 
 
-    	`zen_proto::control::RepStop`
+    	`zpb::control::RepStop`
 
 
-    	`zen_proto::control::RepListConfigurations`
+    	`zpb::control::RepListConfigurations`
 
 
 ```
-    	(unused) zen_proto::control::RepRunCommand
-    (unused) zen_proto::control::RepSetFile
+    (unused) zpb::control::RepRunCommand
+    (unused) zpb::control::RepSetFile
 ```
 
 
@@ -202,7 +202,7 @@ Stop running the ZPU. Resets the state to READY from any state.
 
 
 ```
-ZendarError Status(zen_proto::control::Response& rep);
+ZendarError Status(zpb::control::Response& rep);
 ```
 
 
@@ -211,7 +211,7 @@ ZendarError Status(zen_proto::control::Response& rep);
 
 
 ```
-ZendarError ListConfigurations(zen_proto::control::Response& rep);
+ZendarError ListConfigurations(zpb::control::Response& rep);
 ```
 
 
@@ -242,7 +242,7 @@ The Unsubscribe functions clean up the socket and queues from a previous Subscri
 
 ```
 ZendarError NextImage(shannon::data::Image& proto, int timeout = -1);
-ZendarError NextTracker(zen::tracker::message::TrackerState& proto,
+ZendarError NextTracker(zpb::tracker::message::TrackerState& proto,
                 Int timeout = -1);
 ZendarError NextTracklog(shannon::data::Position& proto, int = -1);
 ZendarError NextLogMessage(shannon::data::LogRecord& proto, int = -1);
@@ -346,7 +346,7 @@ Example usage:
 #include <data.pb.h>
 
 ZendarReceiver rcv("tcp://10.0.0.1:6342");
-zen_proto::data::Image;
+zpb::data::Image;
 rcv.SubscribeImages(100);
 // Receive images while some condition is true
 while (condition) {
