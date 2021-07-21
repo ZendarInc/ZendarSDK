@@ -22,10 +22,10 @@ int main(int argc, char* argv[]) {
     printf("Failed to subscribe to logs");
 
   printf("Successful Initialization\n");
-  zen_proto::data::Image image;
-  zen::tracker::message::TrackerState tracker_state;
-  zen_proto::data::Position position;
-  zen_proto::data::LogRecord log;
+  zpb::data::Image image;
+  zpb::tracker::message::TrackerState tracker_state;
+  zpb::data::Position position;
+  zpb::data::LogRecord log;
 
   for (int i = 0; i < 10; ++i) {
     error = rcv.NextImage(image);
