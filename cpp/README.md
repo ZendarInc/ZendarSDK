@@ -241,11 +241,11 @@ The Unsubscribe functions clean up the socket and queues from a previous Subscri
 
 
 ```
-ZendarError NextImage(shannon::data::Image& proto, int timeout = -1);
+ZendarError NextImage(zpb::data::Image& proto, int timeout = -1);
 ZendarError NextTracker(zpb::tracker::message::TrackerState& proto,
                 Int timeout = -1);
-ZendarError NextTracklog(shannon::data::Position& proto, int = -1);
-ZendarError NextLogMessage(shannon::data::LogRecord& proto, int = -1);
+ZendarError NextTracklog(zpb::data::Position& proto, int = -1);
+ZendarError NextLogMessage(zpb::data::LogRecord& proto, int = -1);
 ```
 
 
