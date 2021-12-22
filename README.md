@@ -23,12 +23,3 @@ Zendar binary protobuf streams are stored in the following format:
 <8-byte header> | <4-byte message size> <message> | <4-byte message size> <message> | ....
 ```
 Please see [RadarDataStreamer](python/viewer/radar_data_streamer.py) for an example implementation.
-
-
-## Data Viewer
-Recorded data can be played back by the Python based viewer. Please follow the [setup instructions](python/README.md) and the [run instructions](python/viewer/README.md).
-
-## Raw Radar Data Access
-
-Zendar is also releasing raw radar data, in the form of direct ADC samples from the radar sensor. This tool can be found under `python/raw_radar_reader/example.py`
-
