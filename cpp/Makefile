@@ -9,7 +9,7 @@ ZENDAR_INSTALL_PATH=/usr/lib
 ZENDAR_CORE_DEB=$(wildcard zendar-core*.deb)
 ZENDAR_API_DEB=$(wildcard zendar-zenapi*.deb)
 
-LIBS = zendar_api glog shared_protobuf protobuf shannon_core nng pthread
+LIBS = zendar_api glog shared_protobuf protobuf shannon_core pthread
 LINKFLAGS = $(addprefix -l, ${LIBS})
 LIBPATH=$(addprefix -L, ${ZENDAR_INSTALL_PATH})
 .PHONY: all install debian protocol example clean
