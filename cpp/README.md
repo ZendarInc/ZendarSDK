@@ -13,7 +13,6 @@ This document describes the usage of the Zendar API library, which is the interf
 
 ```
 libgoogle-glog0v5
-libnng
 libprotobuf
 protobuf-compiler
 g++
@@ -28,26 +27,6 @@ Install the requirements:
 
 ```
 sudo apt install libgoogle-glog0v5 libgoogle-glog-dev libprotobuf-dev protobuf-compiler g++ git cmake
-```
-
-
-Then clone and install the nng library:
-
-
-```
-git clone https://github.com/nanomsg/nng.git
-cd nng
-git checkout b74e76c  # i.e Revision 1.2.4
-mkdir build
-cd build
-cmake .. -DCMAKE_INSTALL_PATH=/usr/local \
-        -DNNG_TESTS:BOOL=OFF \
-        -DNNG_TOOLS:BOOL=OFF \
-        -DNNG_ENABLE_TLS:BOOL=OFF \
-        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-make -j
-sudo make install
-sudo ldconfig
 ```
 
 
