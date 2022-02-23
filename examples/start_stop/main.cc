@@ -59,20 +59,20 @@ ModeExists(ZenApi::Mode mode, std::vector<ZenApi::Mode> modes)
 }
 
 void
-SpinImages()
+SpinImages(int* image_counter)
 {
   while (auto next_image = ZenApi::NextImage()) {
     (void)next_image;
-    std::cout << "Got Image!" << std::endl;
+    *image_counter += 1;
   }
 }
 
 void
-SpinPoints()
+SpinPoints(int* pc_counter)
 {
   while (auto next_points = ZenApi::NextTrackerState()) {
     (void)next_points;
-    std::cout  << "Got Point Cloud!" << std::endl;
+    *pc_counter += 1;
   }
 }
 
@@ -103,6 +103,9 @@ main(int argc, char* argv[])
 {
   ZenApi::Init(&argc, &argv);
 
+  int pc_counter = 0;
+  int image_counter = 0;
+
   std::ofstream log_file;
   log_file.open(FLAGS_log_path);
 
@@ -122,6 +125,8 @@ main(int argc, char* argv[])
     for (const auto& mode : modes) {
       std::cout << mode << std::endl;
     }
+
+    return EXIT_FAILURE;
   }
 
   // start the radars
@@ -138,8 +143,8 @@ main(int argc, char* argv[])
   ZenApi::SubscribeHousekeepingReports();
 
   // listen to data
-  auto image_reader = std::thread(SpinImages);
-  auto points_reader = std::thread(SpinPoints);
+  auto image_reader = std::thread(SpinImages, &image_counter);
+  auto points_reader = std::thread(SpinPoints, &pc_counter);
   auto log_reader = std::thread(SpinLogs, &log_file);
   auto hk_reader = std::thread(SpinHK);
 
@@ -160,6 +165,8 @@ main(int argc, char* argv[])
   hk_reader.join();
   log_reader.join();
 
+  log_file << "total point clouds received: " << pc_counter << std::endl;
+  log_file << "total sar images received: " << image_counter << std::endl;
   log_file << "clean exit" << std::endl;
   log_file.close();
 
