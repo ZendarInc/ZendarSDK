@@ -32,8 +32,8 @@ DEFINE_string(
   "address should be from the device's viewpoint."
 );
 
-DEFINE_string(
-  run_duration, "120",
+DEFINE_int32(
+  run_duration, 120,
   "How long (in seconds) to run this program before disconnect. "
 );
 
@@ -149,7 +149,7 @@ main(int argc, char* argv[])
   auto hk_reader = std::thread(SpinHK);
 
   std::this_thread::sleep_for(
-      std::chrono::seconds(std::stoi(FLAGS_run_duration)));
+      std::chrono::seconds(FLAGS_run_duration));
 
   // close down
   ZenApi::UnsubscribeImages();
