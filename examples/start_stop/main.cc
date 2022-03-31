@@ -72,6 +72,7 @@ SpinPoints(int* pc_counter)
 {
   while (auto next_points = ZenApi::NextTrackerState()) {
     (void)next_points;
+    std::cout << "got points " << pc_counter << std::endl;
     *pc_counter += 1;
   }
 }
@@ -81,17 +82,19 @@ SpinLogs(std::ofstream* file)
 {
   while (auto next_log = ZenApi::NextLogMessage()) {
     std::cout << next_log->canonical_message() << std::endl;
-    if (next_log->severity() > 0){
+    if (next_log->severity() >= 0){
       (*file) << next_log->canonical_message() << std::endl;
     }
   }
 }
 
 void
-SpinHK()
+SpinHK(bool* is_running)
 {
-  while (auto next_hk = ZenApi::NextHousekeepingReport()) {
-    (void)next_hk;
+  while (auto report = ZenApi::NextHousekeepingReport()) {
+    if (report->report_case() == zpb::telem::HousekeepingReport::kImagingStatus){
+      *is_running = report->imaging_status().is_running();
+    }
   }
 }
 
@@ -103,6 +106,7 @@ main(int argc, char* argv[])
 {
   ZenApi::Init(&argc, &argv);
 
+  bool is_running = true;
   int pc_counter = 0;
   int image_counter = 0;
 
@@ -146,10 +150,22 @@ main(int argc, char* argv[])
   auto image_reader = std::thread(SpinImages, &image_counter);
   auto points_reader = std::thread(SpinPoints, &pc_counter);
   auto log_reader = std::thread(SpinLogs, &log_file);
-  auto hk_reader = std::thread(SpinHK);
+  auto hk_reader = std::thread(SpinHK, &is_running);
 
   std::this_thread::sleep_for(
       std::chrono::seconds(FLAGS_run_duration));
+
+  // before closing down, log data
+  log_file << "total point clouds received: " << pc_counter << std::endl;
+  log_file << "total sar images received: " << image_counter << std::endl;
+
+  if (is_running) {
+    log_file << "clean exit" << std::endl;
+  }
+  else {
+    log_file << "failed exit" << std::endl;
+  }
+  log_file.close();
 
   // close down
   ZenApi::UnsubscribeImages();
@@ -165,12 +181,10 @@ main(int argc, char* argv[])
   hk_reader.join();
   log_reader.join();
 
-  log_file << "total point clouds received: " << pc_counter << std::endl;
-  log_file << "total sar images received: " << image_counter << std::endl;
-  log_file << "clean exit" << std::endl;
-  log_file.close();
-
-  std::cout << "done" << std::endl;
-
-  return EXIT_SUCCESS;
+  if (is_running){
+    return EXIT_SUCCESS;
+  }
+  else {
+    return EXIT_FAILURE;
+  }
 }
