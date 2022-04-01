@@ -68,12 +68,11 @@ SpinImages(int* image_counter)
 }
 
 void
-SpinPoints(int* pc_counter)
+SpinPoints(int* total_pc_counter, int* total_pc_frame_counter)
 {
   while (auto next_points = ZenApi::NextTrackerState()) {
-    (void)next_points;
-    std::cout << "got points " << pc_counter << std::endl;
-    *pc_counter += 1;
+    *total_pc_counter += next_points->detection_size();
+    *total_pc_frame_counter += 1;
   }
 }
 
@@ -107,7 +106,8 @@ main(int argc, char* argv[])
   ZenApi::Init(&argc, &argv);
 
   bool is_running = true;
-  int pc_counter = 0;
+  int total_pc_counter = 0;
+  int total_pc_frame_counter = 0;
   int image_counter = 0;
 
   std::ofstream log_file;
@@ -148,7 +148,7 @@ main(int argc, char* argv[])
 
   // listen to data
   auto image_reader = std::thread(SpinImages, &image_counter);
-  auto points_reader = std::thread(SpinPoints, &pc_counter);
+  auto points_reader = std::thread(SpinPoints, &total_pc_counter, &total_pc_frame_counter);
   auto log_reader = std::thread(SpinLogs, &log_file);
   auto hk_reader = std::thread(SpinHK, &is_running);
 
@@ -156,7 +156,8 @@ main(int argc, char* argv[])
       std::chrono::seconds(FLAGS_run_duration));
 
   // before closing down, log data
-  log_file << "total point clouds received: " << pc_counter << std::endl;
+  log_file << "total points received: " << total_pc_counter << std::endl;
+  log_file << "total point clouds received: " << total_pc_frame_counter << std::endl;
   log_file << "total sar images received: " << image_counter << std::endl;
 
   if (is_running) {
