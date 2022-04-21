@@ -177,6 +177,7 @@ main(int argc, char* argv[])
   ZenApi::Release();
   image_reader.join();
   points_reader.join();
+  ZenApi::Stop();
 
   ZenApi::Disconnect();
   hk_reader.join();
