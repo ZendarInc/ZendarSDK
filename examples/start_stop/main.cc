@@ -139,6 +139,7 @@ main(int argc, char* argv[])
   ZenApi::Start(FLAGS_imaging_mode, default_install_options, FLAGS_stream_addr);
 
   std::cout << "radar started" << std::endl;
+  log_file << "Running Mode: " << FLAGS_imaging_mode << std::endl;
 
   // subscribe to radar data
   ZenApi::SubscribeImages();
