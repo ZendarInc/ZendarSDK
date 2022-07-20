@@ -46,7 +46,7 @@ else()
   list(APPEND COMMON_INC ${PROTOBUF_INCLUDE_DIRS})
   list(APPEND COMMON_DEP ${PROTOBUF_LIBRARIES})
 
-  list(APPEND COMMON_DEP zendar_api zendar_common shared_protobuf)
+  list(APPEND COMMON_DEP zendar_api2 zendar_common shared_protobuf)
 endif()
 
 
