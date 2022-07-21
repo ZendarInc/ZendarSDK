@@ -23,8 +23,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
 
 ## common dependencies #########################################################
 
-list(APPEND COMMON_DEP pthread)
-
 if (LOCAL_API)
   list(APPEND CMAKE_PREFIX_PATH "$ENV{ZEN_CODE}/build/install/share/zendar/cmake")
   find_package(ZenApi REQUIRED)
@@ -34,6 +32,8 @@ elseif(SYSTEM_API)
   find_package(ZenApi REQUIRED)
   list(APPEND COMMON_DEP zen::zendar_api)
 else()
+  list(APPEND COMMON_DEP zendar_api2 zendar_common shared_protobuf)
+
   find_package(GFlags REQUIRED)
   list(APPEND COMMON_INC ${GFLAGS_INCLUDE_DIRS})
   list(APPEND COMMON_DEP ${GFLAGS_LIBRARIES})
@@ -45,8 +45,6 @@ else()
   find_package(Protobuf REQUIRED)
   list(APPEND COMMON_INC ${PROTOBUF_INCLUDE_DIRS})
   list(APPEND COMMON_DEP ${PROTOBUF_LIBRARIES})
-
-  list(APPEND COMMON_DEP zendar_api2 zendar_common shared_protobuf)
 endif()
 
 
