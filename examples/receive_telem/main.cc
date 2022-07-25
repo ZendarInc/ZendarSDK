@@ -30,6 +30,7 @@ SpinHK()
         << "Got Heartbeat message" << "\n"
         << "Heartbeat: " << heartbeat.echo() << "\n";
     }
+
     if (next_hk->has_sensor_identity()) {
       const auto& sensor_identity = next_hk->sensor_identity();
       LOG(INFO) 
@@ -76,6 +77,7 @@ SpinHK()
         << "CPU Temperature: " << temperatures.cpu_temperature() << " Celsius" << "\n"
         << "GPU Temperature: " << temperatures.gpu_temperature() << " Celsius" << "\n";
     }
+
     if (next_hk->has_memory_usage()) {
       const auto& memory_usage = next_hk->memory_usage();
       LOG(INFO) 
@@ -83,6 +85,7 @@ SpinHK()
         << "CPU/GPU Memory Usage: " << memory_usage.cpu_memory_usage() / 1'000'000 << "GB" << "\n"
         << "CPU/GPU Memory Total: " << memory_usage.cpu_total_memory() / 1'000'000 << "GB" << "\n";
     }
+    
     if (next_hk->has_utilization()) {
       const auto& utilization = next_hk->utilization();
       LOG(INFO) 
