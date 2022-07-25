@@ -3,13 +3,7 @@
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 
-
-
-#include <google/protobuf/text_format.h>
-
 #include <thread>
-
-
 
 DEFINE_string(
   device_addr, "localhost",
