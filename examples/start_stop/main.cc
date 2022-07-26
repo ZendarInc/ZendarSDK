@@ -1,12 +1,16 @@
 #include <zendar/api/api.h>
 
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <thread>
 #include <chrono>
+#include <atomic>
+
+using namespace std::literals;
 
 
 DEFINE_string(
@@ -42,7 +46,15 @@ DEFINE_string(
   "file path of the output log file."
 );
 
+DEFINE_double(
+  kill_temp, 60.0,
+  "Temperature threshold for the device, in deg-C."
+  "Sends a stop if the CPU or GPU temperature exceeds this value."
+);
+
 using namespace zen::api;
+
+std::atomic<bool> early_terminate;
 
 
 namespace {
@@ -91,8 +103,26 @@ void
 SpinHK(bool* is_running)
 {
   while (auto report = ZenApi::NextHousekeepingReport()) {
-    if (report->report_case() == zpb::telem::HousekeepingReport::kImagingStatus){
+    VLOG(1) << report->DebugString();
+
+    if (report->report_case() == zpb::telem::HousekeepingReport::kImagingStatus) {
       *is_running = report->imaging_status().is_running();
+    }
+
+    if (report->report_case() == zpb::telem::HousekeepingReport::kTemperatures) {
+      const auto& temperatures = report->temperatures();
+      auto cpu_temp = temperatures.cpu_temperature();
+      auto gpu_temp = temperatures.gpu_temperature();
+
+      if (cpu_temp >= FLAGS_kill_temp || gpu_temp >= FLAGS_kill_temp) {
+        LOG(ERROR)
+          << "FATAL Device temperatue exceeded the kill threshold. HALTING! "
+          << "{ kill_temp: " << FLAGS_kill_temp
+          << ", CPU_temp: " << cpu_temp
+          << ", GPU_temp: " << gpu_temp << " }.";
+        ZenApi::Stop();
+        early_terminate = true;
+      }
     }
   }
 }
@@ -153,8 +183,11 @@ main(int argc, char* argv[])
   auto log_reader = std::thread(SpinLogs, &log_file);
   auto hk_reader = std::thread(SpinHK, &is_running);
 
-  std::this_thread::sleep_for(
-      std::chrono::seconds(FLAGS_run_duration));
+  auto start = std::chrono::steady_clock::now();
+  auto end = start + std::chrono::seconds(FLAGS_run_duration);
+  while (std::chrono::steady_clock::now() < end && !early_terminate) {
+    std::this_thread::sleep_for(50ms);
+  }
 
   // before closing down, log data
   log_file << "total points received: " << total_pc_counter << std::endl;
@@ -184,7 +217,7 @@ main(int argc, char* argv[])
   hk_reader.join();
   log_reader.join();
 
-  if (is_running){
+  if (is_running) {
     return EXIT_SUCCESS;
   }
   else {

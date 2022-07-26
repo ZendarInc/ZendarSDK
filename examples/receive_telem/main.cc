@@ -22,8 +22,6 @@ void
 SpinHK()
 {
   while (auto next_hk = ZenApi::NextHousekeepingReport()) {
-    (void)next_hk;
-
     if (next_hk->has_heartbeat()) {
       const auto& heartbeat = next_hk->heartbeat();
       LOG(INFO)

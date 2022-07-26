@@ -48,8 +48,8 @@ void
 SpinHK()
 {
   while (auto next_hk = ZenApi::NextHousekeepingReport()) {
-    (void)next_hk;
     LOG(INFO) << "SUCCESS Got a Housekeeping Report!";
+    VLOG(1) << next_hk->DebugString();
   }
 }
 
