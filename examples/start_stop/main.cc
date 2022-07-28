@@ -202,16 +202,21 @@ main(int argc, char* argv[])
   }
   log_file.close();
 
-  // close down
+  // stop radar processor
   ZenApi::UnsubscribeImages();
   ZenApi::UnsubscribeTrackerStates();
-  ZenApi::UnsubscribeHousekeepingReports();
-  ZenApi::UnsubscribeLogMessages();
 
   ZenApi::Release();
   image_reader.join();
   points_reader.join();
   ZenApi::Stop();
+
+  // keep logging a few moments longer to flush the queue
+  std::this_thread::sleep_for(500ms);
+
+  // disconnect from the log channels
+  ZenApi::UnsubscribeHousekeepingReports();
+  ZenApi::UnsubscribeLogMessages();
 
   ZenApi::Disconnect();
   hk_reader.join();
