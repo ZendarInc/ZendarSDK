@@ -47,7 +47,7 @@ DEFINE_string(
 );
 
 DEFINE_double(
-  kill_temp, 60.0,
+  kill_temp, 75.0,
   "Temperature threshold for the device, in deg-C."
   "Sends a stop if the CPU or GPU temperature exceeds this value."
 );
