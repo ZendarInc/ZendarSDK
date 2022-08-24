@@ -27,16 +27,17 @@ main(int argc, char* argv[])
 
   // Get shannon_imaging running status from Heartbeat
   ZenApi::SubscribeHousekeepingReports();
-  auto hk_report = ZenApi::NextHousekeepingReport();
-
-  if (hk_report->has_heartbeat()) {
-    const auto& heartbeat = hk_report->heartbeat();
-    if (heartbeat.is_running()) {
-      // stop shannon imaging before reboot the ZPU
-      ZenApi::Stop();
+  while (auto hk_report = ZenApi::NextHousekeepingReport()) {
+    if (hk_report->has_heartbeat()) {
+      const auto& heartbeat = hk_report->heartbeat();
+      if (heartbeat.is_running()) {
+        // stop shannon imaging before reboot the ZPU
+        ZenApi::Stop();
+      }
+      break;
     }
   }
-
+  
   ZenApi::RebootZPU();
   ZenApi::Disconnect();
 
