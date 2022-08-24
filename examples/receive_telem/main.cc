@@ -24,9 +24,13 @@ SpinHK()
   while (auto next_hk = ZenApi::NextHousekeepingReport()) {
     if (next_hk->has_heartbeat()) {
       const auto& heartbeat = next_hk->heartbeat();
+      std::string is_running = "false";
+      if (heartbeat.is_running() != 0) is_running = "true";
+ 
       LOG(INFO)
         << "Got Heartbeat message" << "\n"
-        << "Heartbeat: " << heartbeat.echo() << "\n";
+        << "Heartbeat shannon_imaging is running: " << is_running << "\n"
+        << "Running Mode: " << heartbeat.running_mode()<< "\n";
     }
 
     if (next_hk->has_sensor_identity()) {
@@ -45,18 +49,6 @@ SpinHK()
         << "Radar Extrinsic T y: " << sensor_identity.extrinsic().t().y() << "\n"
         << "Radar Extrinsic T Z: " << sensor_identity.extrinsic().t().z() << "\n"
         << "Radar Extrinsic Time: " << sensor_identity.extrinsic().time() << "\n";
-    }
-
-    if (next_hk->has_imaging_status()) {
-      const auto& imaging_status = next_hk->imaging_status();
-
-      std::string is_running = "false";
-      if (imaging_status.is_running() != 0) is_running = "true";
- 
-      LOG(INFO) 
-        << "Got Imaging Status message" << "\n"
-        << "Imaging is running: " << is_running << "\n"
-        << "Running Mode: " << imaging_status.running_mode()<< "\n";
     }
     
     if (next_hk->has_gps_status()) {
