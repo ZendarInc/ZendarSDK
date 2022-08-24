@@ -25,7 +25,7 @@ SpinHK()
     if (next_hk->has_heartbeat()) {
       const auto& heartbeat = next_hk->heartbeat();
       std::string is_running = "false";
-      if (heartbeat.is_running() != 0) is_running = "true";
+      if (heartbeat.is_running()) is_running = "true";
  
       LOG(INFO)
         << "Got Heartbeat message" << "\n"
