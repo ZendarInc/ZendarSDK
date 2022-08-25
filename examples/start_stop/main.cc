@@ -105,8 +105,8 @@ SpinHK(bool* is_running)
   while (auto report = ZenApi::NextHousekeepingReport()) {
     VLOG(1) << report->DebugString();
 
-    if (report->report_case() == zpb::telem::HousekeepingReport::kImagingStatus) {
-      *is_running = report->imaging_status().is_running();
+    if (report->report_case() == zpb::telem::HousekeepingReport::kHeartbeat) {
+      *is_running = report->heartbeat().is_running();
     }
 
     if (report->report_case() == zpb::telem::HousekeepingReport::kTemperatures) {
