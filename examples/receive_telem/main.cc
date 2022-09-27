@@ -38,9 +38,6 @@ SpinHK()
       LOG(INFO) 
         << "Got Sensor Identity message" << "\n"
         << "Serial: " << sensor_identity.serial() << "\n"
-        // << "System Major: " << sensor_identity.system_major() << "\n"
-        // << "System Minor: " << sensor_identity.system_minor() << "\n"
-        // << "Channel: " << sensor_identity.channel() << "\n"
         << "Radar Extrinsic R w: " << sensor_identity.extrinsic().r().w() << "\n"
         << "Radar Extrinsic R x: " << sensor_identity.extrinsic().r().x() << "\n"
         << "Radar Extrinsic R y: " << sensor_identity.extrinsic().r().y() << "\n"
