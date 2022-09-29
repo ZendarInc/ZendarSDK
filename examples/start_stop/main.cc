@@ -1,4 +1,4 @@
-#include <zendar/api/api.h>
+#include <zendar/client/api/api.h>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -27,6 +27,11 @@ DEFINE_string(
 DEFINE_string(
   imaging_mode, "",
   "The imaging mode to be run."
+);
+
+DEFINE_string(
+  vehicle_name, "",
+  "The vehicle name for vehicle.pt"
 );
 
 DEFINE_string(
@@ -166,7 +171,8 @@ main(int argc, char* argv[])
   // start the radars
   auto default_install_options = ZenApi::InstallOptions();
   default_install_options.install_path = FLAGS_install_path;
-  ZenApi::Start(FLAGS_imaging_mode, default_install_options, FLAGS_stream_addr);
+  ZenApi::Start(FLAGS_imaging_mode, FLAGS_vehicle_name, 
+                default_install_options, FLAGS_stream_addr);
 
   std::cout << "radar started" << std::endl;
   log_file << "Running Mode: " << FLAGS_imaging_mode << std::endl;
