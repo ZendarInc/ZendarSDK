@@ -1,4 +1,4 @@
-#include <zendar/api/api.h>
+#include <zendar/client/api/api.h>
 
 #include <gflags/gflags.h>
 
@@ -13,6 +13,11 @@ DEFINE_string(
 DEFINE_string(
   imaging_mode, "choose-a-mode",
   "The imaging mode to be run."
+);
+
+DEFINE_string(
+  vehicle_name, "",
+  "The vehicle name for vehicle.pt"
 );
 
 DEFINE_string(
@@ -34,7 +39,8 @@ main(int argc, char* argv[])
   ZenApi::Connect(FLAGS_device_addr, default_telem_ports);
 
   auto default_install_options = ZenApi::InstallOptions();
-  ZenApi::Start(FLAGS_imaging_mode, default_install_options, FLAGS_stream_addr);
+  ZenApi::Start(FLAGS_imaging_mode, FLAGS_vehicle_name, 
+                default_install_options, FLAGS_stream_addr);
 
   ZenApi::Disconnect();
 
