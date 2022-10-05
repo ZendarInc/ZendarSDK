@@ -98,7 +98,8 @@ SpinLogs()
 int
 main(int argc, char* argv[])
 {
-  ZenApi::Init(&argc, &argv);
+  ZenApi::Init();
+  google::ParseCommandLineFlags(&argc, &argv, false);
 
   auto default_telem_ports = ZenApi::TelemPortOptions();
   ZenApi::Connect(FLAGS_device_addr, default_telem_ports);
