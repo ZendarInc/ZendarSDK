@@ -138,7 +138,8 @@ SpinHK(bool* is_running)
 int
 main(int argc, char* argv[])
 {
-  ZenApi::Init(&argc, &argv);
+  ZenApi::Init();
+  google::ParseCommandLineFlags(&argc, &argv, false);
 
   bool is_running = true;
   int total_pc_counter = 0;

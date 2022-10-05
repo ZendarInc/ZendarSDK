@@ -50,7 +50,8 @@ SpinTracklogs()
 int
 main(int argc, char* argv[])
 {
-  ZenApi::Init(&argc, &argv);
+  ZenApi::Init();
+  google::ParseCommandLineFlags(&argc, &argv, false);
 
   auto default_data_ports = ZenApi::DataPortOptions();
   ZenApi::Bind(default_data_ports);
